@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- エッジツーエッジ対応のテーマ -->
+    <style name="Theme.EdgeToEdge" parent="android:Theme.Material.NoActionBar">
+        <!-- ステータスバーとナビゲーションバーを透過 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        
+        <!-- EdgeToEdgeを有効化 (API 29+) -->
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        
+        <!-- システムUIの表示を制御 -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>
+

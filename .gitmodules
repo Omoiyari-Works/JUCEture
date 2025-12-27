@@ -1,0 +1,4 @@
+[submodule "external/perfetto"]
+	path = external/perfetto
+	url = https://github.com/google/perfetto.git
+	branch = releases/v53.x

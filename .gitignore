@@ -1,0 +1,6 @@
+.gradle/
+.cxx/
+build/
+debug
+release
+Builds/Android/local.properties

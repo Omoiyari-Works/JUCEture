@@ -1,0 +1,60 @@
+duration_ms: 10000
+
+buffers {
+  size_kb: 65536
+  fill_policy: RING_BUFFER
+}
+
+data_sources {
+  config {
+    name: "linux.ftrace"
+    target_buffer: 0
+    ftrace_config {
+      ftrace_events: "sched/sched_switch"
+      ftrace_events: "sched/sched_wakeup"
+      atrace_categories: "view"
+      atrace_categories: "gfx"
+      atrace_categories: "input"
+      atrace_apps: "com.yourcompany.androidguisampleproject"
+      symbolize_ksyms: true
+    }
+  }
+}
+
+data_sources {
+  config {
+    name: "android.view"
+  }
+}
+data_sources {
+  config {
+    name: "android.gfx"
+  }
+}
+data_sources {
+  config {
+    name: "android.app"
+  }
+}
+
+data_sources: {
+    config {
+        name: "linux.process_stats"
+        target_buffer: 0
+        process_stats_config {
+            scan_all_processes_on_start: true
+        }
+    }
+}
+
+data_sources {
+  config {
+    name: "track_event"
+    track_event_config {
+      enabled_categories: "app"
+      enabled_categories: "view"
+      enabled_categories: "gfx"
+    }
+  }
+}
+
