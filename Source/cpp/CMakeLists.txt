@@ -27,6 +27,8 @@ find_path(JUCE_MODULES_DIR
     DOC "Path to JUCE modules directory"
 )
 
+message(STATUS "JUCE_MODULES_DIR: ${JUCE_MODULES_DIR}")
+
 # Step 2: If not found in relative paths, check environment variable or CMake variable
 if(NOT JUCE_MODULES_DIR)
     if(DEFINED JUCE_DIR)
