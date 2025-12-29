@@ -77,20 +77,20 @@ class GestureMediator : public ISingleTapMediator, public IDragMediator, public 
     IPinchHandler* activePinchHandler;
     juce::Component* activePinchComponent;
 
-    // 最前面から背面方向にハンドラを持つコンポーネントを検索する共通処理
+    // 指定座標の最前面コンポーネントがハンドラを持っている場合、そのハンドラを返す
     template <typename HandlerType>
-    HandlerType* findTopmostHandler(float rawX, float rawY,
-                                    juce::Point<float>& outLocal,
-                                    juce::Point<float>& outGlobal);
+    HandlerType* getHandlerFromTopmostComponent(float rawX, float rawY,
+                                                 juce::Point<float>& outLocal,
+                                                 juce::Point<float>& outGlobal);
 
     void resetDragState();
     void resetPinchState();
 };
 
 template <typename HandlerType>
-HandlerType* GestureMediator::findTopmostHandler(float rawX, float rawY,
-                                                 juce::Point<float>& outLocal,
-                                                 juce::Point<float>& outGlobal)
+HandlerType* GestureMediator::getHandlerFromTopmostComponent(float rawX, float rawY,
+                                                              juce::Point<float>& outLocal,
+                                                              juce::Point<float>& outGlobal)
 {
 #if JUCE_ANDROID
     auto numPeers = juce::ComponentPeer::getNumPeers();
@@ -120,13 +120,10 @@ HandlerType* GestureMediator::findTopmostHandler(float rawX, float rawY,
         return nullptr;
     }
 
-    for (auto* comp = target; comp != nullptr; comp = comp->getParentComponent())
+    if (auto* handler = dynamic_cast<HandlerType*>(target))
     {
-        if (auto* handler = dynamic_cast<HandlerType*>(comp))
-        {
-            outLocal = comp->getLocalPoint(&peerComp, topLocal);
-            return handler;
-        }
+        outLocal = target->getLocalPoint(&peerComp, topLocal);
+        return handler;
     }
 
     return nullptr;

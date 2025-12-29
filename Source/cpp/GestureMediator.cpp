@@ -20,7 +20,7 @@ bool GestureMediator::onSingleTap(float rawX, float rawY,
                                   ISingleTapHandler*& outTarget)
 {
 #if JUCE_ANDROID
-    outTarget = findTopmostHandler<ISingleTapHandler>(rawX, rawY, outLocal, outGlobal);
+    outTarget = getHandlerFromTopmostComponent<ISingleTapHandler>(rawX, rawY, outLocal, outGlobal);
     return outTarget != nullptr;
 #else
     return false;
@@ -39,7 +39,7 @@ bool GestureMediator::onDragStart(float startRawX, float startRawY,
 #if JUCE_ANDROID
     juce::Point<float> startLocal;
     juce::Point<float> startGlobal;
-    outTarget = findTopmostHandler<IDragHandler>(startRawX, startRawY, startLocal, startGlobal);
+    outTarget = getHandlerFromTopmostComponent<IDragHandler>(startRawX, startRawY, startLocal, startGlobal);
 
     if (outTarget != nullptr)
     {
@@ -220,7 +220,7 @@ bool GestureMediator::onPinchStart(float focusRawX, float focusRawY,
                                    IPinchHandler*& outTarget)
 {
 #if JUCE_ANDROID
-    outTarget = findTopmostHandler<IPinchHandler>(focusRawX, focusRawY, outFocusLocal, outFocusGlobal);
+    outTarget = getHandlerFromTopmostComponent<IPinchHandler>(focusRawX, focusRawY, outFocusLocal, outFocusGlobal);
 
     if (outTarget != nullptr)
     {
