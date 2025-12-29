@@ -16,6 +16,9 @@ class PinchDetector
     void onPinchEndRaw(float focusRawX, float focusRawY, float scaleFactorStep);
 
   private:
+    static constexpr float INITIAL_TOTAL_SCALE_FACTOR = 1.0f;
+
     IPinchMediator& mediator;
     IPinchHandler* handler;
+    float totalScaleFactor;
 };

@@ -2,9 +2,10 @@
 
 PinchScaleEvent::PinchScaleEvent(const juce::Point<float>& focusLocal,
                                  float scaleFactorStep,
+                                 float scaleFactorTotal,
                                  const juce::Point<float>& focusGlobal)
     : GestureEvent(), focusLocal(focusLocal), scaleFactorStep(scaleFactorStep),
-      focusGlobal(focusGlobal)
+      scaleFactorTotal(scaleFactorTotal), focusGlobal(focusGlobal)
 {
 }
 
@@ -20,6 +21,11 @@ juce::Point<float> PinchScaleEvent::getFocusLocal() const
 float PinchScaleEvent::getScaleFactorStep() const
 {
     return scaleFactorStep;
+}
+
+float PinchScaleEvent::getScaleFactorTotal() const
+{
+    return scaleFactorTotal;
 }
 
 juce::Point<float> PinchScaleEvent::getFocusGlobal() const
