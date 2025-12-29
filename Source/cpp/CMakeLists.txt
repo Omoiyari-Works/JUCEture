@@ -116,6 +116,106 @@ endif()
 # Export JUCE_MODULES_DIR for parent CMakeLists.txt if needed
 set(JUCE_MODULES_DIR ${JUCE_MODULES_DIR} CACHE PATH "Path to JUCE modules directory")
 
+# JuceLibraryCode directory detection (priority: Relative paths > Environment variable or CMake variable)
+# This detection is based on relative paths from JUCEture root (where Source/ directory exists)
+# Step 1: Check relative paths first
+# Relative paths from JUCEture root
+set(JUCELIBRARYCODE_RELATIVE_PATHS_RAW
+    "${JUCETURE_ROOT_DIR}/../../../JuceLibraryCode"  # JUCEture root/../../../JuceLibraryCode
+    "${JUCETURE_ROOT_DIR}/../../JuceLibraryCode"     # JUCEture root/../../JuceLibraryCode
+    "${JUCETURE_ROOT_DIR}/../JuceLibraryCode"        # JUCEture root/../JuceLibraryCode
+    "${JUCETURE_ROOT_DIR}/JuceLibraryCode"           # JUCEture root/./JuceLibraryCode
+    "${JUCETURE_ROOT_DIR}/external/JuceLibraryCode"  # JUCEture root/./external/JuceLibraryCode
+    "${JUCETURE_ROOT_DIR}/../external/JuceLibraryCode"    # JUCEture root/../external/JuceLibraryCode
+    "${JUCETURE_ROOT_DIR}/../../external/JuceLibraryCode" # JUCEture root/../../external/JuceLibraryCode
+)
+
+# Convert all paths to absolute paths and search for JuceLibraryCode directory
+set(JUCELIBRARYCODE_RELATIVE_PATHS "")
+set(JUCELIBRARYCODE_DIR_FOUND "")
+message(STATUS "Searching for JuceLibraryCode directory in the following paths:")
+foreach(PATH_RAW ${JUCELIBRARYCODE_RELATIVE_PATHS_RAW})
+    get_filename_component(PATH_ABS "${PATH_RAW}" ABSOLUTE)
+    list(APPEND JUCELIBRARYCODE_RELATIVE_PATHS "${PATH_ABS}")
+    
+    # Check if this path contains the JuceHeader.h file
+    if(NOT JUCELIBRARYCODE_DIR_FOUND)
+        message(STATUS "  - ${PATH_ABS}")
+        if(EXISTS "${PATH_ABS}/JuceHeader.h")
+            message(STATUS "    -> Found JuceLibraryCode directory")
+            set(JUCELIBRARYCODE_DIR_FOUND "${PATH_ABS}")
+        else()
+            if(EXISTS "${PATH_ABS}")
+                message(STATUS "    -> EXISTS but JuceHeader.h not found")
+            else()
+                message(STATUS "    -> NOT EXISTS")
+            endif()
+        endif()
+    endif()
+endforeach()
+
+# Set JUCELIBRARYCODE_DIR if found
+if(JUCELIBRARYCODE_DIR_FOUND)
+    message(STATUS "Found JuceLibraryCode directory: ${JUCELIBRARYCODE_DIR_FOUND}")
+    set(JUCELIBRARYCODE_DIR "${JUCELIBRARYCODE_DIR_FOUND}" CACHE PATH "Path to JuceLibraryCode directory" FORCE)
+else()
+    message(STATUS "JuceLibraryCode directory not found in relative paths")
+endif()
+
+message(STATUS "JUCELIBRARYCODE_DIR: ${JUCELIBRARYCODE_DIR}")
+
+# Step 2: If not found in relative paths, check environment variable or CMake variable
+if(NOT JUCELIBRARYCODE_DIR)
+    if(DEFINED CACHE{JUCELIBRARYCODE_DIR})
+        # CMake variable JUCELIBRARYCODE_DIR is set
+        message(STATUS "Using JUCELIBRARYCODE_DIR from CMake variable: ${JUCELIBRARYCODE_DIR}")
+        get_filename_component(JUCELIBRARYCODE_DIR_ABS "${JUCELIBRARYCODE_DIR}" ABSOLUTE)
+        if(EXISTS "${JUCELIBRARYCODE_DIR_ABS}/JuceHeader.h")
+            message(STATUS "Found JuceLibraryCode at: ${JUCELIBRARYCODE_DIR_ABS}")
+            set(JUCELIBRARYCODE_DIR "${JUCELIBRARYCODE_DIR_ABS}" CACHE PATH "Path to JuceLibraryCode directory" FORCE)
+        else()
+            message(STATUS "JUCELIBRARYCODE_DIR points to invalid location: ${JUCELIBRARYCODE_DIR_ABS}")
+        endif()
+    elseif(DEFINED ENV{JUCELIBRARYCODE_DIR})
+        # Environment variable JUCELIBRARYCODE_DIR is set
+        message(STATUS "Using JUCELIBRARYCODE_DIR from environment variable: $ENV{JUCELIBRARYCODE_DIR}")
+        get_filename_component(JUCELIBRARYCODE_DIR_ABS "$ENV{JUCELIBRARYCODE_DIR}" ABSOLUTE)
+        if(EXISTS "${JUCELIBRARYCODE_DIR_ABS}/JuceHeader.h")
+            message(STATUS "Found JuceLibraryCode at: ${JUCELIBRARYCODE_DIR_ABS}")
+            set(JUCELIBRARYCODE_DIR "${JUCELIBRARYCODE_DIR_ABS}" CACHE PATH "Path to JuceLibraryCode directory" FORCE)
+        else()
+            message(STATUS "ENV{JUCELIBRARYCODE_DIR} points to invalid location: ${JUCELIBRARYCODE_DIR_ABS}")
+        endif()
+    else()
+        # Try to infer from parent CMakeLists.txt location
+        # If called from Builds/Android/app/CMakeLists.txt, JuceLibraryCode should be at ../../../JuceLibraryCode
+        get_filename_component(PARENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
+        set(INFERRED_JUCELIBRARYCODE_DIR "${PARENT_DIR}/JuceLibraryCode")
+        message(STATUS "Trying inferred JUCELIBRARYCODE_DIR: ${INFERRED_JUCELIBRARYCODE_DIR}")
+        if(EXISTS "${INFERRED_JUCELIBRARYCODE_DIR}/JuceHeader.h")
+            message(STATUS "Found JuceLibraryCode at inferred path!")
+            set(JUCELIBRARYCODE_DIR "${INFERRED_JUCELIBRARYCODE_DIR}" CACHE PATH "Path to JuceLibraryCode directory" FORCE)
+        else()
+            message(STATUS "Inferred path not found")
+        endif()
+    endif()
+    
+    message(STATUS "Step 2 result - JUCELIBRARYCODE_DIR: ${JUCELIBRARYCODE_DIR}")
+endif()
+
+# If not found, show error with helpful message
+if(NOT JUCELIBRARYCODE_DIR)
+    message(FATAL_ERROR
+        "JuceLibraryCode directory not found.\n"
+        "Please set JUCELIBRARYCODE_DIR to the path containing JuceLibraryCode (the directory that contains 'JuceHeader.h' file), or place JuceLibraryCode in one of:\n"
+        "${JUCELIBRARYCODE_RELATIVE_PATHS}\n"
+        "Example: cmake -DJUCELIBRARYCODE_DIR=/path/to/JuceLibraryCode ..."
+    )
+endif()
+
+# Export JUCELIBRARYCODE_DIR for parent CMakeLists.txt if needed
+set(JUCELIBRARYCODE_DIR ${JUCELIBRARYCODE_DIR} CACHE PATH "Path to JuceLibraryCode directory")
+
 add_library(SourceLib STATIC
     # Common files
     CoordinateConverter.cpp
@@ -160,6 +260,7 @@ add_library(SourceLib STATIC
 )
 
 target_include_directories(SourceLib PUBLIC
+    ${JUCELIBRARYCODE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/SingleTap
     ${CMAKE_CURRENT_SOURCE_DIR}/Drag
