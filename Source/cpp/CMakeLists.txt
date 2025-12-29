@@ -261,6 +261,7 @@ add_library(SourceLib STATIC
 
 target_include_directories(SourceLib PUBLIC
     ${JUCELIBRARYCODE_DIR}
+    ${JUCE_MODULES_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/SingleTap
     ${CMAKE_CURRENT_SOURCE_DIR}/Drag
