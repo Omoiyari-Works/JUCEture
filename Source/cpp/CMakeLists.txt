@@ -7,8 +7,14 @@ cmake_minimum_required(VERSION 3.22)
 # Source/cpp/CMakeLists.txt is at Source/cpp/, so JUCEture root is at ../
 get_filename_component(JUCETURE_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
+# Debug: Output path information
+message(STATUS "=== JUCEture CMake Debug Info ===")
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "CMAKE_CURRENT_LIST_DIR: ${CMAKE_CURRENT_LIST_DIR}")
+message(STATUS "JUCETURE_ROOT_DIR: ${JUCETURE_ROOT_DIR}")
+
 # Relative paths from JUCEture root
-set(JUCE_RELATIVE_PATHS
+set(JUCE_RELATIVE_PATHS_RAW
     "${JUCETURE_ROOT_DIR}/../../../JUCE"  # JUCEture root/../../../JUCE
     "${JUCETURE_ROOT_DIR}/../../JUCE"     # JUCEture root/../../JUCE
     "${JUCETURE_ROOT_DIR}/../JUCE"        # JUCEture root/../JUCE
@@ -18,47 +24,90 @@ set(JUCE_RELATIVE_PATHS
     "${JUCETURE_ROOT_DIR}/../../external/JUCE" # JUCEture root/../../external/JUCE
 )
 
-# Find JUCE modules directory in relative paths first
-find_path(JUCE_MODULES_DIR
-    NAMES juce_core/juce_core.h
-    PATHS ${JUCE_RELATIVE_PATHS}
-    PATH_SUFFIXES modules
-    NO_DEFAULT_PATH
-    DOC "Path to JUCE modules directory"
-)
+# Convert all paths to absolute paths and search for JUCE directory
+set(JUCE_RELATIVE_PATHS "")
+set(JUCE_DIR_FOUND "")
+message(STATUS "Searching for JUCE directory in the following paths:")
+foreach(PATH_RAW ${JUCE_RELATIVE_PATHS_RAW})
+    get_filename_component(PATH_ABS "${PATH_RAW}" ABSOLUTE)
+    list(APPEND JUCE_RELATIVE_PATHS "${PATH_ABS}")
+    
+    # Check if this path contains the modules directory
+    if(NOT JUCE_DIR_FOUND)
+        message(STATUS "  - ${PATH_ABS}")
+        if(EXISTS "${PATH_ABS}/modules")
+            message(STATUS "    -> Found JUCE directory")
+            set(JUCE_DIR_FOUND "${PATH_ABS}")
+        else()
+            if(EXISTS "${PATH_ABS}")
+                message(STATUS "    -> EXISTS but modules directory not found")
+            else()
+                message(STATUS "    -> NOT EXISTS")
+            endif()
+        endif()
+    endif()
+endforeach()
+
+# Set JUCE_MODULES_DIR if found
+if(JUCE_DIR_FOUND)
+    message(STATUS "Found JUCE directory: ${JUCE_DIR_FOUND}")
+    get_filename_component(JUCE_MODULES_DIR "${JUCE_DIR_FOUND}/modules" ABSOLUTE)
+    message(STATUS "Setting JUCE_MODULES_DIR to: ${JUCE_MODULES_DIR}")
+    set(JUCE_MODULES_DIR "${JUCE_MODULES_DIR}" CACHE PATH "Path to JUCE modules directory" FORCE)
+else()
+    message(STATUS "JUCE directory not found in relative paths")
+endif()
 
 message(STATUS "JUCE_MODULES_DIR: ${JUCE_MODULES_DIR}")
+message(STATUS "=== End JUCEture CMake Debug Info ===")
 
 # Step 2: If not found in relative paths, check environment variable or CMake variable
 if(NOT JUCE_MODULES_DIR)
     if(DEFINED JUCE_DIR)
         # CMake variable JUCE_DIR is set
-        set(JUCE_SEARCH_PATHS "${JUCE_DIR}")
+        message(STATUS "Using JUCE_DIR from CMake variable: ${JUCE_DIR}")
+        get_filename_component(JUCE_DIR_ABS "${JUCE_DIR}" ABSOLUTE)
+        if(EXISTS "${JUCE_DIR_ABS}/modules")
+            message(STATUS "Found JUCE at: ${JUCE_DIR_ABS}")
+            get_filename_component(JUCE_MODULES_DIR "${JUCE_DIR_ABS}/modules" ABSOLUTE)
+            set(JUCE_MODULES_DIR "${JUCE_MODULES_DIR}" CACHE PATH "Path to JUCE modules directory" FORCE)
+        else()
+            message(STATUS "JUCE_DIR points to invalid location: ${JUCE_DIR_ABS}")
+        endif()
     elseif(DEFINED ENV{JUCE_DIR})
         # Environment variable JUCE_DIR is set
-        set(JUCE_SEARCH_PATHS "$ENV{JUCE_DIR}")
+        message(STATUS "Using JUCE_DIR from environment variable: $ENV{JUCE_DIR}")
+        get_filename_component(JUCE_DIR_ABS "$ENV{JUCE_DIR}" ABSOLUTE)
+        if(EXISTS "${JUCE_DIR_ABS}/modules")
+            message(STATUS "Found JUCE at: ${JUCE_DIR_ABS}")
+            get_filename_component(JUCE_MODULES_DIR "${JUCE_DIR_ABS}/modules" ABSOLUTE)
+            set(JUCE_MODULES_DIR "${JUCE_MODULES_DIR}" CACHE PATH "Path to JUCE modules directory" FORCE)
+        else()
+            message(STATUS "ENV{JUCE_DIR} points to invalid location: ${JUCE_DIR_ABS}")
+        endif()
     else()
-        # Use relative paths for error message
-        set(JUCE_SEARCH_PATHS ${JUCE_RELATIVE_PATHS})
+        # Try to infer from parent CMakeLists.txt location
+        # If called from Builds/Android/app/CMakeLists.txt, JUCE should be at ../../../JUCE
+        get_filename_component(PARENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
+        set(INFERRED_JUCE_DIR "${PARENT_DIR}/JUCE")
+        message(STATUS "Trying inferred JUCE_DIR: ${INFERRED_JUCE_DIR}")
+        if(EXISTS "${INFERRED_JUCE_DIR}/modules")
+            message(STATUS "Found JUCE at inferred path!")
+            get_filename_component(JUCE_MODULES_DIR "${INFERRED_JUCE_DIR}/modules" ABSOLUTE)
+            set(JUCE_MODULES_DIR "${JUCE_MODULES_DIR}" CACHE PATH "Path to JUCE modules directory" FORCE)
+        else()
+            message(STATUS "Inferred path not found")
+        endif()
     endif()
     
-    # Search in the specified path
-    if(JUCE_SEARCH_PATHS)
-        find_path(JUCE_MODULES_DIR
-            NAMES juce_core/juce_core.h
-            PATHS ${JUCE_SEARCH_PATHS}
-            PATH_SUFFIXES modules
-            NO_DEFAULT_PATH
-            DOC "Path to JUCE modules directory"
-        )
-    endif()
+    message(STATUS "Step 2 result - JUCE_MODULES_DIR: ${JUCE_MODULES_DIR}")
 endif()
 
 # If not found, show error with helpful message
 if(NOT JUCE_MODULES_DIR)
     message(FATAL_ERROR
-        "JUCE modules directory not found.\n"
-        "Please set JUCE_DIR to the path containing JUCE modules, or place JUCE in one of:\n"
+        "JUCE directory not found.\n"
+        "Please set JUCE_DIR to the path containing JUCE (the directory that contains 'modules' subdirectory), or place JUCE in one of:\n"
         "${JUCE_RELATIVE_PATHS}\n"
         "Example: cmake -DJUCE_DIR=/path/to/juce ..."
     )
