@@ -1,6 +1,7 @@
 #include "SingleTap/SingleTapDetector.h"
 #include "Drag/DragDetector.h"
 #include "Pinch/PinchDetector.h"
+#include "LongTap/LongTapDetector.h"
 #include "GestureMediator.h"
 #include <JuceHeader.h>
 #if JUCE_ANDROID
@@ -13,6 +14,7 @@
 static std::unique_ptr<SingleTapDetector> gSingleTapDetector;
 static std::unique_ptr<DragDetector> gDragDetector;
 static std::unique_ptr<PinchDetector> gPinchDetector;
+static std::unique_ptr<LongTapDetector> gLongTapDetector;
 
 // Viewへのattach状態管理
 static bool gViewAttached = false;
@@ -75,6 +77,7 @@ void initializeDetectors()
     gSingleTapDetector = std::make_unique<SingleTapDetector>();
     gDragDetector = std::make_unique<DragDetector>();
     gPinchDetector = std::make_unique<PinchDetector>();
+    gLongTapDetector = std::make_unique<LongTapDetector>();
     gDetectorsInitialized = true;
 }
 
@@ -179,6 +182,20 @@ extern "C"
         {
             gPinchDetector->onPinchEndRaw(focusXInView, focusYInView, scaleFactorStep);
         }
+    }
+
+    JNIEXPORT jboolean JNICALL
+    Java_com_juceture_android_NotifierGestureFromAndroid_onLongTap(
+        JNIEnv* /*env*/, jclass /*clazz*/, jfloat rawX, jfloat rawY,
+        jfloat density)
+    {
+        juce::ignoreUnused(density);
+        if (gLongTapDetector != nullptr)
+        {
+            bool result = gLongTapDetector->onRawInput(rawX, rawY);
+            return result ? JNI_TRUE : JNI_FALSE;
+        }
+        return JNI_FALSE;
     }
 }
 #endif

@@ -16,6 +16,10 @@ public final class NotifierGestureFromAndroid {
     // Returns true if ISingleTapHandler was found and handled, false otherwise
     private static native boolean onSingleTap(float xPx, float yPx, float density);
 
+    // Notify C++ of long tap coordinates
+    // Returns true if ILongTapHandler was found and handled, false otherwise
+    private static native boolean onLongTap(float xPx, float yPx, float density);
+
     private static native void onDragStart(float startRawX, float startRawY,
             float currentRawX, float currentRawY,
             float deltaX, float deltaY,
@@ -146,6 +150,19 @@ public final class NotifierGestureFromAndroid {
                         public boolean onDown(MotionEvent e) {
                             // Return true to receive On scroll
                             return true;
+                        }
+
+                        @Override
+                        public void onLongPress(MotionEvent e) {
+                            try {
+                                // Pass screen coordinates (raw px) and density (move to top-level local in C++)
+                                final float density = context.getResources().getDisplayMetrics().density;
+                                onLongTap(e.getRawX(), e.getRawY(), density);
+                            } catch (UnsatisfiedLinkError err) {
+                                Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onLongPress", err);
+                            } catch (Throwable t) {
+                                Log.e("NotifierGestureFromAndroid", "Throwable in onLongPress", t);
+                            }
                         }
 
                         @Override

@@ -235,6 +235,13 @@ add_library(SourceLib STATIC
     SingleTap/SingleTapEvent.h
     SingleTap/ISingleTapHandler.h
     SingleTap/ISingleTapMediator.h
+    # LongTap
+    LongTap/LongTapDetector.cpp
+    LongTap/LongTapDetector.h
+    LongTap/LongTapEvent.cpp
+    LongTap/LongTapEvent.h
+    LongTap/ILongTapHandler.h
+    LongTap/ILongTapMediator.h
     # Drag
     Drag/DragDetector.cpp
     Drag/DragDetector.h
@@ -264,6 +271,7 @@ target_include_directories(SourceLib PUBLIC
     ${JUCE_MODULES_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/SingleTap
+    ${CMAKE_CURRENT_SOURCE_DIR}/LongTap
     ${CMAKE_CURRENT_SOURCE_DIR}/Drag
     ${CMAKE_CURRENT_SOURCE_DIR}/Pinch
 )

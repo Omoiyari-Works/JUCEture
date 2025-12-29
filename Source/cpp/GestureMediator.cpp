@@ -329,3 +329,16 @@ void GestureMediator::resetPinchState()
     activePinchHandler = nullptr;
     activePinchComponent = nullptr;
 }
+
+bool GestureMediator::onLongTap(float rawX, float rawY,
+                                juce::Point<float>& outLocal,
+                                juce::Point<float>& outGlobal,
+                                ILongTapHandler*& outTarget)
+{
+#if JUCE_ANDROID
+    outTarget = getHandlerFromTopmostComponent<ILongTapHandler>(rawX, rawY, outLocal, outGlobal);
+    return outTarget != nullptr;
+#else
+    return false;
+#endif
+}

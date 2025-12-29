@@ -3,13 +3,15 @@
 #include "SingleTap/ISingleTapMediator.h"
 #include "Drag/IDragMediator.h"
 #include "Pinch/IPinchMediator.h"
+#include "LongTap/ILongTapMediator.h"
 #include "SingleTap/ISingleTapHandler.h"
 #include "Drag/IDragHandler.h"
 #include "Pinch/IPinchHandler.h"
+#include "LongTap/ILongTapHandler.h"
 #include "CoordinateConverter.h"
 #include <JuceHeader.h>
 
-class GestureMediator : public ISingleTapMediator, public IDragMediator, public IPinchMediator
+class GestureMediator : public ISingleTapMediator, public IDragMediator, public IPinchMediator, public ILongTapMediator
 {
   public:
     GestureMediator();
@@ -66,6 +68,11 @@ class GestureMediator : public ISingleTapMediator, public IDragMediator, public 
 
     // IPinchMediator implementation
     IPinchHandler* getActivePinchHandler() const override;
+
+    // ILongTapMediator implementation
+    bool onLongTap(float rawX, float rawY, juce::Point<float>& outLocal,
+                   juce::Point<float>& outGlobal,
+                   ILongTapHandler*& outTarget) override;
 
   private:
     IDragHandler* activeDragHandler;
