@@ -14,99 +14,13 @@ GestureMediator::GestureMediator()
 {
 }
 
-ISingleTapHandler* GestureMediator::findTopmostSingleTapHandler(
-    float rawX, float rawY, juce::Point<float>& outLocal,
-    juce::Point<float>& outGlobal)
-{
-#if JUCE_ANDROID
-    auto numPeers = juce::ComponentPeer::getNumPeers();
-    if (numPeers <= 0)
-    {
-        return nullptr;
-    }
-
-    auto* peer = juce::ComponentPeer::getPeer(0);
-    if (peer == nullptr)
-    {
-        return nullptr;
-    }
-
-    auto& peerComp = peer->getComponent();
-
-    if (!CoordinateConverter::rawToLogicalGlobal(rawX, rawY, outGlobal))
-    {
-        return nullptr;
-    }
-
-    juce::Point<float> topLocal = peer->globalToLocal(outGlobal);
-
-    juce::Component* target = peerComp.getComponentAt(topLocal);
-    if (target == nullptr)
-    {
-        return nullptr;
-    }
-
-    for (auto* comp = target; comp != nullptr; comp = comp->getParentComponent())
-    {
-        if (auto* handler = dynamic_cast<ISingleTapHandler*>(comp))
-        {
-            outLocal = comp->getLocalPoint(&peerComp, topLocal);
-            return handler;
-        }
-    }
-
-    return nullptr;
-#else
-    return nullptr;
-#endif
-}
-
-IDragHandler* GestureMediator::findTopmostDragHandler(float rawX, float rawY,
-                                                      juce::Point<float>& outLocal,
-                                                      juce::Point<float>& outGlobal)
-{
-#if JUCE_ANDROID
-    auto numPeers = juce::ComponentPeer::getNumPeers();
-    if (numPeers <= 0)
-        return nullptr;
-
-    auto* peer = juce::ComponentPeer::getPeer(0);
-    if (peer == nullptr)
-        return nullptr;
-
-    auto& peerComp = peer->getComponent();
-
-    if (!CoordinateConverter::rawToLogicalGlobal(rawX, rawY, outGlobal))
-        return nullptr;
-
-    juce::Point<float> topLocal = peer->globalToLocal(outGlobal);
-
-    juce::Component* target = peerComp.getComponentAt(topLocal);
-    if (target == nullptr)
-        return nullptr;
-
-    for (auto* comp = target; comp != nullptr; comp = comp->getParentComponent())
-    {
-        if (auto* handler = dynamic_cast<IDragHandler*>(comp))
-        {
-            outLocal = comp->getLocalPoint(&peerComp, topLocal);
-            return handler;
-        }
-    }
-
-    return nullptr;
-#else
-    return nullptr;
-#endif
-}
-
 bool GestureMediator::onSingleTap(float rawX, float rawY,
                                   juce::Point<float>& outLocal,
                                   juce::Point<float>& outGlobal,
                                   ISingleTapHandler*& outTarget)
 {
 #if JUCE_ANDROID
-    outTarget = findTopmostSingleTapHandler(rawX, rawY, outLocal, outGlobal);
+    outTarget = findTopmostHandler<ISingleTapHandler>(rawX, rawY, outLocal, outGlobal);
     return outTarget != nullptr;
 #else
     return false;
@@ -125,7 +39,7 @@ bool GestureMediator::onDragStart(float startRawX, float startRawY,
 #if JUCE_ANDROID
     juce::Point<float> startLocal;
     juce::Point<float> startGlobal;
-    outTarget = findTopmostDragHandler(startRawX, startRawY, startLocal, startGlobal);
+    outTarget = findTopmostHandler<IDragHandler>(startRawX, startRawY, startLocal, startGlobal);
 
     if (outTarget != nullptr)
     {
@@ -299,45 +213,6 @@ IDragHandler* GestureMediator::getActiveDragHandler() const
     return activeDragHandler;
 }
 
-IPinchHandler* GestureMediator::findTopmostPinchHandler(float rawX, float rawY,
-                                                        juce::Point<float>& outLocal,
-                                                        juce::Point<float>& outGlobal)
-{
-#if JUCE_ANDROID
-    auto numPeers = juce::ComponentPeer::getNumPeers();
-    if (numPeers <= 0)
-        return nullptr;
-
-    auto* peer = juce::ComponentPeer::getPeer(0);
-    if (peer == nullptr)
-        return nullptr;
-
-    auto& peerComp = peer->getComponent();
-
-    if (!CoordinateConverter::rawToLogicalGlobal(rawX, rawY, outGlobal))
-        return nullptr;
-
-    juce::Point<float> topLocal = peer->globalToLocal(outGlobal);
-
-    juce::Component* target = peerComp.getComponentAt(topLocal);
-    if (target == nullptr)
-        return nullptr;
-
-    for (auto* comp = target; comp != nullptr; comp = comp->getParentComponent())
-    {
-        if (auto* handler = dynamic_cast<IPinchHandler*>(comp))
-        {
-            outLocal = comp->getLocalPoint(&peerComp, topLocal);
-            return handler;
-        }
-    }
-
-    return nullptr;
-#else
-    return nullptr;
-#endif
-}
-
 bool GestureMediator::onPinchStart(float focusRawX, float focusRawY,
                                    float /*scaleFactorStep*/,
                                    juce::Point<float>& outFocusLocal,
@@ -345,7 +220,7 @@ bool GestureMediator::onPinchStart(float focusRawX, float focusRawY,
                                    IPinchHandler*& outTarget)
 {
 #if JUCE_ANDROID
-    outTarget = findTopmostPinchHandler(focusRawX, focusRawY, outFocusLocal, outFocusGlobal);
+    outTarget = findTopmostHandler<IPinchHandler>(focusRawX, focusRawY, outFocusLocal, outFocusGlobal);
 
     if (outTarget != nullptr)
     {
