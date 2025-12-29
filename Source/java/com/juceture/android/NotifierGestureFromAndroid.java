@@ -13,7 +13,8 @@ public final class NotifierGestureFromAndroid {
     }
 
     // Notify C++ of coordinates (View -> peer -> global -> getComponentAt in C++)
-    private static native void onSingleTap(float xPx, float yPx, float density);
+    // Returns true if ISingleTapHandler was found and handled, false otherwise
+    private static native boolean onSingleTap(float xPx, float yPx, float density);
 
     private static native void onDragStart(float startRawX, float startRawY,
             float currentRawX, float currentRawY,
@@ -69,8 +70,9 @@ public final class NotifierGestureFromAndroid {
     private static final WeakHashMap<View, OnTouchWrapper> sAttached = new WeakHashMap<>();
 
     public static void attach(final View view, final long nativePtr) {
-        if (view == null)
+        if (view == null) {
             return;
+        }
 
         OnTouchWrapper wrapper = sAttached.get(view);
         if (wrapper == null) {
@@ -111,6 +113,7 @@ public final class NotifierGestureFromAndroid {
         private float lastRawY = 0f;
         private float lastRawFocusX = 0f;
         private float lastRawFocusY = 0f;
+        private boolean lastSingleTapHandled = false;
 
         OnTouchWrapper(Context context) {
             this.context = context;
@@ -122,13 +125,21 @@ public final class NotifierGestureFromAndroid {
                             try {
                                 // Pass screen coordinates (raw px) and density (move to top-level local in C++)
                                 final float density = context.getResources().getDisplayMetrics().density;
-                                onSingleTap(e.getRawX(), e.getRawY(), density);
+                                boolean handled = onSingleTap(e.getRawX(), e.getRawY(), density);
+                                // Store the result for use in onTouch()
+                                lastSingleTapHandled = handled;
+                                // Return true only if ISingleTapHandler was found and handled the event
+                                // Return false to allow JUCE's normal mouse event processing
+                                return handled;
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onSingleTap", err);
+                                lastSingleTapHandled = false;
                             } catch (Throwable t) {
                                 Log.e("NotifierGestureFromAndroid", "Throwable in onSingleTap", t);
+                                lastSingleTapHandled = false;
                             }
-                            return true;
+                            // If exception occurred, return false to allow JUCE's normal processing
+                            return false;
                         }
 
                         @Override
@@ -227,6 +238,10 @@ public final class NotifierGestureFromAndroid {
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
+            final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) {
+                lastSingleTapHandled = false; // Reset for new touch sequence
+            }
             // Calculate raw focus coordinates from current pointers (used for pinching)
             int pointerCount = 0;
             try {
@@ -247,9 +262,48 @@ public final class NotifierGestureFromAndroid {
             updatePinchingStateFromPointerCount(pointerCount);
             final boolean handledGesture = detector.onTouchEvent(event);
             final boolean handledScale = scaleDetector.onTouchEvent(event);
-            final boolean handled = handledGesture || handledScale;
+            
+            // Determine if we should consume the event
+            boolean handled = false;
+            if (action == MotionEvent.ACTION_UP) {
+                // For ACTION_UP, check if ISingleTapHandler was found
+                // (onSingleTapUp() was called inside detector.onTouchEvent() and set lastSingleTapHandled)
+                if (handledScale) {
+                    // Only consume if it's actually a pinch gesture (not just scale detector returning true)
+                    // Check if we're actually pinching
+                    if (pinching || pinchGestureActive) {
+                        handled = true;
+                    } else {
+                        // Scale detector returned true but not actually pinching, check single tap
+                        handled = lastSingleTapHandled;
+                    }
+                } else if (handledGesture) {
+                    handled = lastSingleTapHandled;
+                }
+            } else {
+                // For other actions (DOWN, MOVE, etc.), consume if gesture detector handled it
+                if (handledScale) {
+                    // Only consume if it's actually a pinch gesture (not just scale detector returning true)
+                    // Check if we're actually pinching
+                    if (pinching || pinchGestureActive) {
+                        handled = true;
+                    } else {
+                        // Scale detector returned true but not actually pinching, don't consume
+                        // This allows JUCE's standard event handling to process the event
+                        handled = false;
+                    }
+                } else if (handledGesture) {
+                    // For ACTION_DOWN, we don't know yet if ISingleTapHandler will be found
+                    // So we don't consume the event, allowing JUCE's standard event handling
+                    if (action == MotionEvent.ACTION_DOWN) {
+                        handled = false;
+                    } else {
+                        // For MOVE, etc., consume if gesture detector handled it
+                        handled = handledGesture;
+                    }
+                }
+            }
 
-            final int action = event.getActionMasked();
             if ((action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) && dragging) {
                 try {
                     final float density = context.getResources().getDisplayMetrics().density;

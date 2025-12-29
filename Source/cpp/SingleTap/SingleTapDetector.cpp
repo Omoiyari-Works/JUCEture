@@ -16,7 +16,7 @@ SingleTapDetector::~SingleTapDetector()
 {
 }
 
-void SingleTapDetector::onRawInput(float rawX, float rawY)
+bool SingleTapDetector::onRawInput(float rawX, float rawY)
 {
 #if JUCE_ANDROID
     juce::Point<float> local;
@@ -29,7 +29,11 @@ void SingleTapDetector::onRawInput(float rawX, float rawY)
         {
             SingleTapEvent event(local, global);
             target->onSingleTap(event);
+            return true;
         }
     }
+    return false;
+#else
+    return false;
 #endif
 }

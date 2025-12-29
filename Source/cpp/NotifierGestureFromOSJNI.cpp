@@ -27,25 +27,35 @@ bool attachGestureListenerOnce()
 {
     std::lock_guard<std::mutex> lock(gAttachMutex);
     if (gViewAttached)
+    {
         return true;
+    }
 
     auto* peer = juce::ComponentPeer::getPeer(0);
     if (peer == nullptr)
+    {
         return false;
+    }
 
     if (auto* env = juce::getEnv())
     {
         auto viewObj = static_cast<jobject>(peer->getNativeHandle());
         if (viewObj == nullptr)
+        {
             return false;
+        }
 
         const jclass helperClass = env->FindClass("com/juceture/android/NotifierGestureFromAndroid");
         if (helperClass == nullptr)
+        {
             return false;
+        }
 
         const jmethodID attachMethod = env->GetStaticMethodID(helperClass, "attach", "(Landroid/view/View;J)V");
         if (attachMethod == nullptr)
+        {
             return false;
+        }
 
         // nativePtrは0で良い（実際には使われていない）
         env->CallStaticVoidMethod(helperClass, attachMethod, viewObj, static_cast<jlong>(0));
@@ -70,17 +80,18 @@ void initializeDetectors()
 
 extern "C"
 {
-    JNIEXPORT void JNICALL
+    JNIEXPORT jboolean JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onSingleTap(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat rawX, jfloat rawY,
         jfloat density)
     {
         juce::ignoreUnused(density);
-
         if (gSingleTapDetector != nullptr)
         {
-            gSingleTapDetector->onRawInput(rawX, rawY);
+            bool result = gSingleTapDetector->onRawInput(rawX, rawY);
+            return result ? JNI_TRUE : JNI_FALSE;
         }
+        return JNI_FALSE;
     }
 
     JNIEXPORT void JNICALL

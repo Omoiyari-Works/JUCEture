@@ -21,22 +21,30 @@ ISingleTapHandler* GestureMediator::findTopmostSingleTapHandler(
 #if JUCE_ANDROID
     auto numPeers = juce::ComponentPeer::getNumPeers();
     if (numPeers <= 0)
+    {
         return nullptr;
+    }
 
     auto* peer = juce::ComponentPeer::getPeer(0);
     if (peer == nullptr)
+    {
         return nullptr;
+    }
 
     auto& peerComp = peer->getComponent();
 
     if (!CoordinateConverter::rawToLogicalGlobal(rawX, rawY, outGlobal))
+    {
         return nullptr;
+    }
 
     juce::Point<float> topLocal = peer->globalToLocal(outGlobal);
 
     juce::Component* target = peerComp.getComponentAt(topLocal);
     if (target == nullptr)
+    {
         return nullptr;
+    }
 
     for (auto* comp = target; comp != nullptr; comp = comp->getParentComponent())
     {

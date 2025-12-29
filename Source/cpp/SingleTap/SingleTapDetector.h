@@ -11,7 +11,7 @@ class SingleTapDetector
     explicit SingleTapDetector(ISingleTapMediator& mediator);
     ~SingleTapDetector();
 
-    void onRawInput(float rawX, float rawY);
+    bool onRawInput(float rawX, float rawY);
 
   private:
     ISingleTapMediator& mediator;
