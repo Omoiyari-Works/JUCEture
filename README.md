@@ -31,6 +31,7 @@ A sample Android GUI application project built with JUCE framework and native C+
         - [Single Tap](#single-tap)
         - [Drag](#drag)
         - [Pinch](#pinch)
+        - [Long Tap](#long-tap)
     - [Building and Running](#building-and-running)
       - [Build the project in Android Studio](#build-the-project-in-android-studio)
       - [Build the project in command-line](#build-the-project-in-command-line)
@@ -352,6 +353,28 @@ public:
 };
 ```
 
+##### Long Tap
+
+Make your Component inherit from `ILongTapHandler` and implement the required method:
+
+```cpp
+#include "ILongTapHandler.h"
+#include "LongTapEvent.h"
+
+class MyComponent : public juce::Component, public ILongTapHandler
+{
+public:
+    void onLongTap(const LongTapEvent& event) override
+    {
+        // Handle long tap gesture
+        // event.getLocalPoint() - local coordinates
+        // event.getGlobalPoint() - global coordinates
+    }
+};
+```
+
+**Note**: Long tap detection is handled by the OS (Android) and automatically notified to the appropriate handler. The gesture is detected when the user presses and holds on the screen for a certain duration. The `onLongTap` method will be called when a long tap is detected at a position within your component's bounds.
+
 ### Building and Running
 
 #### Build the project in Android Studio
@@ -398,6 +421,7 @@ The app displays three colored boxes (Top, Middle, and Bottom) that respond to v
   - **Single Tap**: Tap on any box to test single tap detection
   - **Drag**: Press and drag on the screen to see a drag indicator circle
   - **Pinch**: Use two fingers to perform pinch gestures
+  - **Long Tap**: Press and hold on the screen to test long tap detection
 
 - **Status Display**:
   - Two status labels at the top of the screen show coordinate information
