@@ -145,42 +145,48 @@ extern "C"
     JNIEXPORT void JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onPinchStart(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat focusXInView,
-        jfloat focusYInView, jfloat scaleFactorStep, jfloat density,
+        jfloat focusYInView, jfloat scaleFactorStep,
+        jfloat scaleFactorStepX, jfloat scaleFactorStepY,
+        jfloat density,
         jlong /*ownerPtrLong*/)
     {
         juce::ignoreUnused(density);
 
         if (gPinchDetector != nullptr)
         {
-            gPinchDetector->onPinchStartRaw(focusXInView, focusYInView, scaleFactorStep);
+            gPinchDetector->onPinchStartRaw(focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
         }
     }
 
     JNIEXPORT void JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onPinchScale(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat focusXInView,
-        jfloat focusYInView, jfloat scaleFactorStep, jfloat density,
+        jfloat focusYInView, jfloat scaleFactorStep,
+        jfloat scaleFactorStepX, jfloat scaleFactorStepY,
+        jfloat density,
         jlong /*ownerPtrLong*/)
     {
         juce::ignoreUnused(density);
 
         if (gPinchDetector != nullptr)
         {
-            gPinchDetector->onPinchScaleRaw(focusXInView, focusYInView, scaleFactorStep);
+            gPinchDetector->onPinchScaleRaw(focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
         }
     }
 
     JNIEXPORT void JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onPinchEnd(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat focusXInView,
-        jfloat focusYInView, jfloat scaleFactorStep, jfloat density,
+        jfloat focusYInView, jfloat scaleFactorStep,
+        jfloat scaleFactorStepX, jfloat scaleFactorStepY,
+        jfloat density,
         jlong /*ownerPtrLong*/)
     {
         juce::ignoreUnused(density);
 
         if (gPinchDetector != nullptr)
         {
-            gPinchDetector->onPinchEndRaw(focusXInView, focusYInView, scaleFactorStep);
+            gPinchDetector->onPinchEndRaw(focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
         }
     }
 

@@ -39,13 +39,13 @@ public final class NotifierGestureFromAndroid {
 
     // Pinch (scale) gesture
     private static native void onPinchStart(float focusXInView, float focusYInView,
-            float scaleFactorStep, float density, long nativePtr);
+            float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY, float density, long nativePtr);
 
     private static native void onPinchScale(float focusXInView, float focusYInView,
-            float scaleFactorStep, float density, long nativePtr);
+            float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY, float density, long nativePtr);
 
     private static native void onPinchEnd(float focusXInView, float focusYInView,
-            float scaleFactorStep, float density, long nativePtr);
+            float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY, float density, long nativePtr);
 
     private static final int PHASE_START = 0;
     private static final int PHASE_MOVE = 1;
@@ -216,7 +216,20 @@ public final class NotifierGestureFromAndroid {
                                 ensurePinchingForScale();
                                 final float density = context.getResources().getDisplayMetrics().density;
                                 final float scaleFactorStep = detector.getScaleFactor();
-                                onPinchStart(lastRawFocusX, lastRawFocusY, scaleFactorStep, density, nativePtr);
+
+                                float scaleX = 1.0f;
+                                float scaleY = 1.0f;
+                                if (android.os.Build.VERSION.SDK_INT >= 11) {
+                                    float spanX = detector.getCurrentSpanX();
+                                    float prevSpanX = detector.getPreviousSpanX();
+                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
+
+                                    float spanY = detector.getCurrentSpanY();
+                                    float prevSpanY = detector.getPreviousSpanY();
+                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
+                                }
+
+                                onPinchStart(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScaleBegin", err);
                             } catch (Throwable t) {
@@ -230,7 +243,20 @@ public final class NotifierGestureFromAndroid {
                             try {
                                 final float scaleFactorStep = detector.getScaleFactor();
                                 final float density = context.getResources().getDisplayMetrics().density;
-                                onPinchScale(lastRawFocusX, lastRawFocusY, scaleFactorStep, density, nativePtr);
+
+                                float scaleX = 1.0f;
+                                float scaleY = 1.0f;
+                                if (android.os.Build.VERSION.SDK_INT >= 11) {
+                                    float spanX = detector.getCurrentSpanX();
+                                    float prevSpanX = detector.getPreviousSpanX();
+                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
+
+                                    float spanY = detector.getCurrentSpanY();
+                                    float prevSpanY = detector.getPreviousSpanY();
+                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
+                                }
+
+                                onPinchScale(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScale", err);
                             } catch (Throwable t) {
@@ -244,7 +270,20 @@ public final class NotifierGestureFromAndroid {
                             try {
                                 final float scaleFactorStep = detector.getScaleFactor();
                                 final float density = context.getResources().getDisplayMetrics().density;
-                                onPinchEnd(lastRawFocusX, lastRawFocusY, scaleFactorStep, density, nativePtr);
+
+                                float scaleX = 1.0f;
+                                float scaleY = 1.0f;
+                                if (android.os.Build.VERSION.SDK_INT >= 11) {
+                                    float spanX = detector.getCurrentSpanX();
+                                    float prevSpanX = detector.getPreviousSpanX();
+                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
+
+                                    float spanY = detector.getCurrentSpanY();
+                                    float prevSpanY = detector.getPreviousSpanY();
+                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
+                                }
+
+                                onPinchEnd(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScaleEnd", err);
                             } catch (Throwable t) {
