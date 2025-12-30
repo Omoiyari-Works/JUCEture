@@ -17,4 +17,3 @@ class LongTapDetector
     ILongTapMediator& mediator;
     ILongTapHandler* handler;
 };
-

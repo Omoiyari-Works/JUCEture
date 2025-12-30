@@ -8,4 +8,3 @@ class ILongTapHandler
     virtual ~ILongTapHandler() = default;
     virtual void onLongTap(const LongTapEvent& event) = 0;
 };
-

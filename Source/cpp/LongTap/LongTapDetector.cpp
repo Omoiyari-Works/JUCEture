@@ -37,4 +37,3 @@ bool LongTapDetector::onRawInput(float rawX, float rawY)
     return false;
 #endif
 }
-

@@ -14,4 +14,3 @@ class ILongTapMediator
                            juce::Point<float>& outGlobal,
                            ILongTapHandler*& outTarget) = 0;
 };
-

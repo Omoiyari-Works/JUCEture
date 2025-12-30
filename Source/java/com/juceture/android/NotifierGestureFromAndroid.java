@@ -1,12 +1,14 @@
 package com.juceture.android;
 
-import android.view.GestureDetector;
-import android.view.ScaleGestureDetector;
-import android.view.MotionEvent;
-import android.view.View;
-import android.content.Context;
-import android.util.Log;
 import java.util.WeakHashMap;
+
+import javax.naming.Context;
+import javax.swing.text.View;
+
+import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 
 public final class NotifierGestureFromAndroid {
     private NotifierGestureFromAndroid() {
@@ -280,14 +282,16 @@ public final class NotifierGestureFromAndroid {
             updatePinchingStateFromPointerCount(pointerCount);
             final boolean handledGesture = detector.onTouchEvent(event);
             final boolean handledScale = scaleDetector.onTouchEvent(event);
-            
+
             // Determine if we should consume the event
             boolean handled = false;
             if (action == MotionEvent.ACTION_UP) {
                 // For ACTION_UP, check if ISingleTapHandler was found
-                // (onSingleTapUp() was called inside detector.onTouchEvent() and set lastSingleTapHandled)
+                // (onSingleTapUp() was called inside detector.onTouchEvent() and set
+                // lastSingleTapHandled)
                 if (handledScale) {
-                    // Only consume if it's actually a pinch gesture (not just scale detector returning true)
+                    // Only consume if it's actually a pinch gesture (not just scale detector
+                    // returning true)
                     // Check if we're actually pinching
                     if (pinching || pinchGestureActive) {
                         handled = true;
@@ -301,7 +305,8 @@ public final class NotifierGestureFromAndroid {
             } else {
                 // For other actions (DOWN, MOVE, etc.), consume if gesture detector handled it
                 if (handledScale) {
-                    // Only consume if it's actually a pinch gesture (not just scale detector returning true)
+                    // Only consume if it's actually a pinch gesture (not just scale detector
+                    // returning true)
                     // Check if we're actually pinching
                     if (pinching || pinchGestureActive) {
                         handled = true;

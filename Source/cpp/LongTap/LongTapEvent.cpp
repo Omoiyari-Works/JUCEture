@@ -19,4 +19,3 @@ juce::Point<float> LongTapEvent::getGlobalPoint() const
 {
     return globalPoint;
 }
-

@@ -17,4 +17,3 @@ class LongTapEvent : public GestureEvent
     juce::Point<float> localPoint;
     juce::Point<float> globalPoint;
 };
-

@@ -87,8 +87,8 @@ class GestureMediator : public ISingleTapMediator, public IDragMediator, public 
     // 指定座標の最前面コンポーネントがハンドラを持っている場合、そのハンドラを返す
     template <typename HandlerType>
     HandlerType* getHandlerFromTopmostComponent(float rawX, float rawY,
-                                                 juce::Point<float>& outLocal,
-                                                 juce::Point<float>& outGlobal);
+                                                juce::Point<float>& outLocal,
+                                                juce::Point<float>& outGlobal);
 
     void resetDragState();
     void resetPinchState();
@@ -96,8 +96,8 @@ class GestureMediator : public ISingleTapMediator, public IDragMediator, public 
 
 template <typename HandlerType>
 HandlerType* GestureMediator::getHandlerFromTopmostComponent(float rawX, float rawY,
-                                                              juce::Point<float>& outLocal,
-                                                              juce::Point<float>& outGlobal)
+                                                             juce::Point<float>& outLocal,
+                                                             juce::Point<float>& outGlobal)
 {
 #if JUCE_ANDROID
     auto numPeers = juce::ComponentPeer::getNumPeers();
