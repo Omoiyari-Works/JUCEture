@@ -2,8 +2,8 @@ package com.juceture.android;
 
 import java.util.WeakHashMap;
 
-import javax.naming.Context;
-import javax.swing.text.View;
+import android.view.View;
+import android.content.Context;
 
 import android.util.Log;
 import android.view.GestureDetector;
