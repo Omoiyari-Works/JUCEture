@@ -18,4 +18,10 @@ class CoordinateConverter
                                              float rawX, float rawY,
                                              juce::Point<float>& outLocal,
                                              juce::Point<float>& outGlobal);
+
+    // Convert logical coordinates to physical coordinates (for vectors/deltas)
+    static juce::Point<float> logicalToPhysical(const juce::Point<float>& logical);
+
+    // Convert physical coordinates to logical coordinates (for vectors/deltas)
+    static juce::Point<float> physicalToLogical(const juce::Point<float>& physical);
 };

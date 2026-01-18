@@ -6,14 +6,23 @@
 class SingleTapEvent : public GestureEvent
 {
   public:
-    SingleTapEvent(const juce::Point<float>& localPoint,
-                   const juce::Point<float>& globalPoint);
+    SingleTapEvent(const juce::Point<float>& localPointPt,
+                   const juce::Point<float>& globalPointPt,
+                   const juce::Point<float>& localPointPixels,
+                   const juce::Point<float>& globalPointPixels);
     ~SingleTapEvent();
 
-    juce::Point<float> getLocalPoint() const;
-    juce::Point<float> getGlobalPoint() const;
+    // Get coordinates in Pt (logical coordinates with DPI scaling)
+    juce::Point<float> getLocalPointInPt() const;
+    juce::Point<float> getGlobalPointInPt() const;
+
+    // Get coordinates in Pixels (physical coordinates)
+    juce::Point<float> getLocalPointInPixels() const;
+    juce::Point<float> getGlobalPointInPixels() const;
 
   private:
-    juce::Point<float> localPoint;
-    juce::Point<float> globalPoint;
+    juce::Point<float> localPointPt;
+    juce::Point<float> globalPointPt;
+    juce::Point<float> localPointPixels;
+    juce::Point<float> globalPointPixels;
 };

@@ -1,8 +1,11 @@
 #include "PinchEndEvent.h"
 
-PinchEndEvent::PinchEndEvent(const juce::Point<float>& focusLocal,
-                             const juce::Point<float>& focusGlobal)
-    : GestureEvent(), focusLocal(focusLocal), focusGlobal(focusGlobal)
+PinchEndEvent::PinchEndEvent(const juce::Point<float>& focusLocalPt,
+                             const juce::Point<float>& focusGlobalPt,
+                             const juce::Point<float>& focusLocalPixels,
+                             const juce::Point<float>& focusGlobalPixels)
+    : GestureEvent(), focusLocalPt(focusLocalPt), focusGlobalPt(focusGlobalPt),
+      focusLocalPixels(focusLocalPixels), focusGlobalPixels(focusGlobalPixels)
 {
 }
 
@@ -10,12 +13,22 @@ PinchEndEvent::~PinchEndEvent()
 {
 }
 
-juce::Point<float> PinchEndEvent::getFocusLocal() const
+juce::Point<float> PinchEndEvent::getFocusLocalInPt() const
 {
-    return focusLocal;
+    return focusLocalPt;
 }
 
-juce::Point<float> PinchEndEvent::getFocusGlobal() const
+juce::Point<float> PinchEndEvent::getFocusGlobalInPt() const
 {
-    return focusGlobal;
+    return focusGlobalPt;
+}
+
+juce::Point<float> PinchEndEvent::getFocusLocalInPixels() const
+{
+    return focusLocalPixels;
+}
+
+juce::Point<float> PinchEndEvent::getFocusGlobalInPixels() const
+{
+    return focusGlobalPixels;
 }

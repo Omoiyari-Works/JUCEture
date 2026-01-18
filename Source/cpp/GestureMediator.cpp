@@ -15,13 +15,21 @@ GestureMediator::GestureMediator()
 }
 
 bool GestureMediator::onSingleTap(float rawX, float rawY,
-                                  juce::Point<float>& outLocal,
-                                  juce::Point<float>& outGlobal,
+                                  juce::Point<float>& outLocalPt,
+                                  juce::Point<float>& outGlobalPt,
+                                  juce::Point<float>& outLocalPixels,
+                                  juce::Point<float>& outGlobalPixels,
                                   ISingleTapHandler*& outTarget)
 {
 #if JUCE_ANDROID
-    outTarget = getHandlerFromTopmostComponent<ISingleTapHandler>(rawX, rawY, outLocal, outGlobal);
-    return outTarget != nullptr;
+    outTarget = getHandlerFromTopmostComponent<ISingleTapHandler>(rawX, rawY, outLocalPt, outGlobalPt);
+    if (outTarget != nullptr)
+    {
+        outGlobalPixels = juce::Point<float>(rawX, rawY);
+        outLocalPixels = CoordinateConverter::logicalToPhysical(outLocalPt);
+        return true;
+    }
+    return false;
 #else
     return false;
 #endif
@@ -30,10 +38,14 @@ bool GestureMediator::onSingleTap(float rawX, float rawY,
 bool GestureMediator::onDragStart(float startRawX, float startRawY,
                                   float currentRawX, float currentRawY,
                                   float /*stepDeltaRawX*/, float /*stepDeltaRawY*/,
-                                  juce::Point<float>& outStartLocal,
-                                  juce::Point<float>& outCurrentLocal,
-                                  juce::Point<float>& outStartGlobal,
-                                  juce::Point<float>& outCurrentGlobal,
+                                  juce::Point<float>& outStartLocalPt,
+                                  juce::Point<float>& outCurrentLocalPt,
+                                  juce::Point<float>& outStartGlobalPt,
+                                  juce::Point<float>& outCurrentGlobalPt,
+                                  juce::Point<float>& outStartLocalPixels,
+                                  juce::Point<float>& outCurrentLocalPixels,
+                                  juce::Point<float>& outStartGlobalPixels,
+                                  juce::Point<float>& outCurrentGlobalPixels,
                                   IDragHandler*& outTarget)
 {
 #if JUCE_ANDROID
@@ -64,10 +76,14 @@ bool GestureMediator::onDragStart(float startRawX, float startRawY,
             lastLocal = startLocal;
             dragStartGlobal = startGlobal;
 
-            outStartLocal = startLocal;
-            outCurrentLocal = currLocal;
-            outStartGlobal = startGlobal;
-            outCurrentGlobal = currGlobal;
+            outStartLocalPt = startLocal;
+            outCurrentLocalPt = currLocal;
+            outStartGlobalPt = startGlobal;
+            outCurrentGlobalPt = currGlobal;
+            outStartLocalPixels = CoordinateConverter::logicalToPhysical(startLocal);
+            outCurrentLocalPixels = CoordinateConverter::logicalToPhysical(currLocal);
+            outStartGlobalPixels = juce::Point<float>(startRawX, startRawY);
+            outCurrentGlobalPixels = juce::Point<float>(currentRawX, currentRawY);
             return true;
         }
     }
@@ -80,29 +96,38 @@ bool GestureMediator::onDragStart(float startRawX, float startRawY,
 bool GestureMediator::onDragMove(float startRawX, float startRawY,
                                  float currentRawX, float currentRawY,
                                  float stepDeltaRawX, float stepDeltaRawY,
-                                 juce::Point<float>& outStartLocal,
-                                 juce::Point<float>& outCurrentLocal,
-                                 juce::Point<float>& outDeltaFromLast,
-                                 juce::Point<float>& outStartGlobal,
-                                 juce::Point<float>& outCurrentGlobal)
+                                 juce::Point<float>& outStartLocalPt,
+                                 juce::Point<float>& outCurrentLocalPt,
+                                 juce::Point<float>& outDeltaFromLastPt,
+                                 juce::Point<float>& outStartGlobalPt,
+                                 juce::Point<float>& outCurrentGlobalPt,
+                                 juce::Point<float>& outStartLocalPixels,
+                                 juce::Point<float>& outCurrentLocalPixels,
+                                 juce::Point<float>& outDeltaFromLastPixels,
+                                 juce::Point<float>& outStartGlobalPixels,
+                                 juce::Point<float>& outCurrentGlobalPixels)
 {
 #if JUCE_ANDROID
     if (activeDragHandler == nullptr || activeDragComponent == nullptr)
     {
         IDragHandler* target = nullptr;
-        juce::Point<float> startLocal;
-        juce::Point<float> currLocal;
-        juce::Point<float> startGlob;
-        juce::Point<float> currGlob;
+        juce::Point<float> startLocalPt, currLocalPt, startGlobPt, currGlobPt;
+        juce::Point<float> startLocalPx, currLocalPx, startGlobPx, currGlobPx;
         if (onDragStart(startRawX, startRawY, currentRawX, currentRawY,
-                        stepDeltaRawX, stepDeltaRawY, startLocal, currLocal,
-                        startGlob, currGlob, target))
+                        stepDeltaRawX, stepDeltaRawY, startLocalPt, currLocalPt,
+                        startGlobPt, currGlobPt, startLocalPx, currLocalPx,
+                        startGlobPx, currGlobPx, target))
         {
-            outStartLocal = startLocal;
-            outCurrentLocal = currLocal;
-            outDeltaFromLast = juce::Point<float>(0.0f, 0.0f);
-            outStartGlobal = startGlob;
-            outCurrentGlobal = currGlob;
+            outStartLocalPt = startLocalPt;
+            outCurrentLocalPt = currLocalPt;
+            outDeltaFromLastPt = juce::Point<float>(0.0f, 0.0f);
+            outStartGlobalPt = startGlobPt;
+            outCurrentGlobalPt = currGlobPt;
+            outStartLocalPixels = startLocalPx;
+            outCurrentLocalPixels = currLocalPx;
+            outDeltaFromLastPixels = juce::Point<float>(0.0f, 0.0f);
+            outStartGlobalPixels = startGlobPx;
+            outCurrentGlobalPixels = currGlobPx;
             return true;
         }
         return false;
@@ -127,11 +152,16 @@ bool GestureMediator::onDragMove(float startRawX, float startRawY,
     juce::Point<float> delta(nextLocal.x - currLocal.x, nextLocal.y - currLocal.y);
     lastLocal = nextLocal;
 
-    outStartLocal = dragStartLocal;
-    outCurrentLocal = currLocal;
-    outDeltaFromLast = delta;
-    outStartGlobal = dragStartGlobal;
-    outCurrentGlobal = currGlobal;
+    outStartLocalPt = dragStartLocal;
+    outCurrentLocalPt = currLocal;
+    outDeltaFromLastPt = delta;
+    outStartGlobalPt = dragStartGlobal;
+    outCurrentGlobalPt = currGlobal;
+    outStartLocalPixels = CoordinateConverter::logicalToPhysical(dragStartLocal);
+    outCurrentLocalPixels = CoordinateConverter::logicalToPhysical(currLocal);
+    outDeltaFromLastPixels = CoordinateConverter::logicalToPhysical(delta);
+    outStartGlobalPixels = juce::Point<float>(startRawX, startRawY);
+    outCurrentGlobalPixels = juce::Point<float>(currentRawX, currentRawY);
     return true;
 #else
     return false;
@@ -141,29 +171,38 @@ bool GestureMediator::onDragMove(float startRawX, float startRawY,
 bool GestureMediator::onDragEnd(float startRawX, float startRawY,
                                 float currentRawX, float currentRawY,
                                 float stepDeltaRawX, float stepDeltaRawY,
-                                juce::Point<float>& outStartLocal,
-                                juce::Point<float>& outCurrentLocal,
-                                juce::Point<float>& outDeltaFromLast,
-                                juce::Point<float>& outStartGlobal,
-                                juce::Point<float>& outCurrentGlobal)
+                                juce::Point<float>& outStartLocalPt,
+                                juce::Point<float>& outCurrentLocalPt,
+                                juce::Point<float>& outDeltaFromLastPt,
+                                juce::Point<float>& outStartGlobalPt,
+                                juce::Point<float>& outCurrentGlobalPt,
+                                juce::Point<float>& outStartLocalPixels,
+                                juce::Point<float>& outCurrentLocalPixels,
+                                juce::Point<float>& outDeltaFromLastPixels,
+                                juce::Point<float>& outStartGlobalPixels,
+                                juce::Point<float>& outCurrentGlobalPixels)
 {
 #if JUCE_ANDROID
     if (activeDragHandler == nullptr || activeDragComponent == nullptr)
     {
         IDragHandler* target = nullptr;
-        juce::Point<float> startLocal;
-        juce::Point<float> currLocal;
-        juce::Point<float> startGlob;
-        juce::Point<float> currGlob;
+        juce::Point<float> startLocalPt, currLocalPt, startGlobPt, currGlobPt;
+        juce::Point<float> startLocalPx, currLocalPx, startGlobPx, currGlobPx;
         if (onDragStart(startRawX, startRawY, currentRawX, currentRawY,
-                        stepDeltaRawX, stepDeltaRawY, startLocal, currLocal,
-                        startGlob, currGlob, target))
+                        stepDeltaRawX, stepDeltaRawY, startLocalPt, currLocalPt,
+                        startGlobPt, currGlobPt, startLocalPx, currLocalPx,
+                        startGlobPx, currGlobPx, target))
         {
-            outStartLocal = startLocal;
-            outCurrentLocal = currLocal;
-            outDeltaFromLast = juce::Point<float>(0.0f, 0.0f);
-            outStartGlobal = startGlob;
-            outCurrentGlobal = currGlob;
+            outStartLocalPt = startLocalPt;
+            outCurrentLocalPt = currLocalPt;
+            outDeltaFromLastPt = juce::Point<float>(0.0f, 0.0f);
+            outStartGlobalPt = startGlobPt;
+            outCurrentGlobalPt = currGlobPt;
+            outStartLocalPixels = startLocalPx;
+            outCurrentLocalPixels = currLocalPx;
+            outDeltaFromLastPixels = juce::Point<float>(0.0f, 0.0f);
+            outStartGlobalPixels = startGlobPx;
+            outCurrentGlobalPixels = currGlobPx;
             resetDragState();
             return true;
         }
@@ -191,11 +230,16 @@ bool GestureMediator::onDragEnd(float startRawX, float startRawY,
 
     juce::Point<float> delta(nextLocal.x - currLocal.x, nextLocal.y - currLocal.y);
 
-    outStartLocal = dragStartLocal;
-    outCurrentLocal = currLocal;
-    outDeltaFromLast = delta;
-    outStartGlobal = dragStartGlobal;
-    outCurrentGlobal = currGlobal;
+    outStartLocalPt = dragStartLocal;
+    outCurrentLocalPt = currLocal;
+    outDeltaFromLastPt = delta;
+    outStartGlobalPt = dragStartGlobal;
+    outCurrentGlobalPt = currGlobal;
+    outStartLocalPixels = CoordinateConverter::logicalToPhysical(dragStartLocal);
+    outCurrentLocalPixels = CoordinateConverter::logicalToPhysical(currLocal);
+    outDeltaFromLastPixels = CoordinateConverter::logicalToPhysical(delta);
+    outStartGlobalPixels = juce::Point<float>(startRawX, startRawY);
+    outCurrentGlobalPixels = juce::Point<float>(currentRawX, currentRawY);
 
     resetDragState();
     return true;
@@ -215,12 +259,14 @@ IDragHandler* GestureMediator::getActiveDragHandler() const
 
 bool GestureMediator::onPinchStart(float focusRawX, float focusRawY,
                                    float /*scaleFactorStep*/,
-                                   juce::Point<float>& outFocusLocal,
-                                   juce::Point<float>& outFocusGlobal,
+                                   juce::Point<float>& outFocusLocalPt,
+                                   juce::Point<float>& outFocusGlobalPt,
+                                   juce::Point<float>& outFocusLocalPixels,
+                                   juce::Point<float>& outFocusGlobalPixels,
                                    IPinchHandler*& outTarget)
 {
 #if JUCE_ANDROID
-    outTarget = getHandlerFromTopmostComponent<IPinchHandler>(focusRawX, focusRawY, outFocusLocal, outFocusGlobal);
+    outTarget = getHandlerFromTopmostComponent<IPinchHandler>(focusRawX, focusRawY, outFocusLocalPt, outFocusGlobalPt);
 
     if (outTarget != nullptr)
     {
@@ -230,9 +276,11 @@ bool GestureMediator::onPinchStart(float focusRawX, float focusRawY,
 
         activePinchComponent = comp;
 
-        if (comp->getLocalBounds().toFloat().contains(outFocusLocal))
+        if (comp->getLocalBounds().toFloat().contains(outFocusLocalPt))
         {
             activePinchHandler = outTarget;
+            outFocusLocalPixels = CoordinateConverter::logicalToPhysical(outFocusLocalPt);
+            outFocusGlobalPixels = juce::Point<float>(focusRawX, focusRawY);
             return true;
         }
     }
@@ -244,29 +292,36 @@ bool GestureMediator::onPinchStart(float focusRawX, float focusRawY,
 
 bool GestureMediator::onPinchScale(float focusRawX, float focusRawY,
                                    float /*scaleFactorStep*/,
-                                   juce::Point<float>& outFocusLocal,
-                                   juce::Point<float>& outFocusGlobal)
+                                   juce::Point<float>& outFocusLocalPt,
+                                   juce::Point<float>& outFocusGlobalPt,
+                                   juce::Point<float>& outFocusLocalPixels,
+                                   juce::Point<float>& outFocusGlobalPixels)
 {
 #if JUCE_ANDROID
     if (activePinchHandler == nullptr || activePinchComponent == nullptr)
     {
         IPinchHandler* target = nullptr;
-        juce::Point<float> focusLocal;
-        juce::Point<float> focusGlob;
-        if (onPinchStart(focusRawX, focusRawY, 1.0f, focusLocal, focusGlob, target))
+        juce::Point<float> focusLocalPt, focusGlobPt, focusLocalPx, focusGlobPx;
+        if (onPinchStart(focusRawX, focusRawY, 1.0f, focusLocalPt, focusGlobPt,
+                        focusLocalPx, focusGlobPx, target))
         {
-            outFocusLocal = focusLocal;
-            outFocusGlobal = focusGlob;
+            outFocusLocalPt = focusLocalPt;
+            outFocusGlobalPt = focusGlobPt;
+            outFocusLocalPixels = focusLocalPx;
+            outFocusGlobalPixels = focusGlobPx;
             return true;
         }
         return false;
     }
 
     if (!CoordinateConverter::rawToComponentLocalAndGlobal(
-            *activePinchComponent, focusRawX, focusRawY, outFocusLocal, outFocusGlobal))
+            *activePinchComponent, focusRawX, focusRawY, outFocusLocalPt, outFocusGlobalPt))
     {
         return false;
     }
+
+    outFocusLocalPixels = CoordinateConverter::logicalToPhysical(outFocusLocalPt);
+    outFocusGlobalPixels = juce::Point<float>(focusRawX, focusRawY);
 
     return true;
 #else
@@ -276,19 +331,23 @@ bool GestureMediator::onPinchScale(float focusRawX, float focusRawY,
 
 bool GestureMediator::onPinchEnd(float focusRawX, float focusRawY,
                                  float /*scaleFactorStep*/,
-                                 juce::Point<float>& outFocusLocal,
-                                 juce::Point<float>& outFocusGlobal)
+                                 juce::Point<float>& outFocusLocalPt,
+                                 juce::Point<float>& outFocusGlobalPt,
+                                 juce::Point<float>& outFocusLocalPixels,
+                                 juce::Point<float>& outFocusGlobalPixels)
 {
 #if JUCE_ANDROID
     if (activePinchHandler == nullptr || activePinchComponent == nullptr)
     {
         IPinchHandler* target = nullptr;
-        juce::Point<float> focusLocal;
-        juce::Point<float> focusGlob;
-        if (onPinchStart(focusRawX, focusRawY, 1.0f, focusLocal, focusGlob, target))
+        juce::Point<float> focusLocalPt, focusGlobPt, focusLocalPx, focusGlobPx;
+        if (onPinchStart(focusRawX, focusRawY, 1.0f, focusLocalPt, focusGlobPt,
+                        focusLocalPx, focusGlobPx, target))
         {
-            outFocusLocal = focusLocal;
-            outFocusGlobal = focusGlob;
+            outFocusLocalPt = focusLocalPt;
+            outFocusGlobalPt = focusGlobPt;
+            outFocusLocalPixels = focusLocalPx;
+            outFocusGlobalPixels = focusGlobPx;
             resetPinchState();
             return true;
         }
@@ -297,11 +356,14 @@ bool GestureMediator::onPinchEnd(float focusRawX, float focusRawY,
     }
 
     if (!CoordinateConverter::rawToComponentLocalAndGlobal(
-            *activePinchComponent, focusRawX, focusRawY, outFocusLocal, outFocusGlobal))
+            *activePinchComponent, focusRawX, focusRawY, outFocusLocalPt, outFocusGlobalPt))
     {
         resetPinchState();
         return false;
     }
+
+    outFocusLocalPixels = CoordinateConverter::logicalToPhysical(outFocusLocalPt);
+    outFocusGlobalPixels = juce::Point<float>(focusRawX, focusRawY);
 
     resetPinchState();
     return true;
@@ -331,13 +393,21 @@ void GestureMediator::resetPinchState()
 }
 
 bool GestureMediator::onLongTap(float rawX, float rawY,
-                                juce::Point<float>& outLocal,
-                                juce::Point<float>& outGlobal,
+                                juce::Point<float>& outLocalPt,
+                                juce::Point<float>& outGlobalPt,
+                                juce::Point<float>& outLocalPixels,
+                                juce::Point<float>& outGlobalPixels,
                                 ILongTapHandler*& outTarget)
 {
 #if JUCE_ANDROID
-    outTarget = getHandlerFromTopmostComponent<ILongTapHandler>(rawX, rawY, outLocal, outGlobal);
-    return outTarget != nullptr;
+    outTarget = getHandlerFromTopmostComponent<ILongTapHandler>(rawX, rawY, outLocalPt, outGlobalPt);
+    if (outTarget != nullptr)
+    {
+        outGlobalPixels = juce::Point<float>(rawX, rawY);
+        outLocalPixels = CoordinateConverter::logicalToPhysical(outLocalPt);
+        return true;
+    }
+    return false;
 #else
     return false;
 #endif

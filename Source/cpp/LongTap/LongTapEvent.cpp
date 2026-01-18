@@ -1,8 +1,11 @@
 #include "LongTapEvent.h"
 
-LongTapEvent::LongTapEvent(const juce::Point<float>& localPoint,
-                           const juce::Point<float>& globalPoint)
-    : GestureEvent(), localPoint(localPoint), globalPoint(globalPoint)
+LongTapEvent::LongTapEvent(const juce::Point<float>& localPointPt,
+                           const juce::Point<float>& globalPointPt,
+                           const juce::Point<float>& localPointPixels,
+                           const juce::Point<float>& globalPointPixels)
+    : GestureEvent(), localPointPt(localPointPt), globalPointPt(globalPointPt),
+      localPointPixels(localPointPixels), globalPointPixels(globalPointPixels)
 {
 }
 
@@ -10,12 +13,22 @@ LongTapEvent::~LongTapEvent()
 {
 }
 
-juce::Point<float> LongTapEvent::getLocalPoint() const
+juce::Point<float> LongTapEvent::getLocalPointInPt() const
 {
-    return localPoint;
+    return localPointPt;
 }
 
-juce::Point<float> LongTapEvent::getGlobalPoint() const
+juce::Point<float> LongTapEvent::getGlobalPointInPt() const
 {
-    return globalPoint;
+    return globalPointPt;
+}
+
+juce::Point<float> LongTapEvent::getLocalPointInPixels() const
+{
+    return localPointPixels;
+}
+
+juce::Point<float> LongTapEvent::getGlobalPointInPixels() const
+{
+    return globalPointPixels;
 }

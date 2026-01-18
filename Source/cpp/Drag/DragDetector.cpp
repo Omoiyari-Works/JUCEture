@@ -23,21 +23,22 @@ void DragDetector::onDragStartRaw(float startRawX, float startRawY,
                                   float stepDeltaRawX, float stepDeltaRawY)
 {
 #if JUCE_ANDROID
-    juce::Point<float> startLocal;
-    juce::Point<float> currLocal;
-    juce::Point<float> startGlobal;
-    juce::Point<float> currGlobal;
+    juce::Point<float> startLocalPt, currLocalPt, startGlobalPt, currGlobalPt;
+    juce::Point<float> startLocalPx, currLocalPx, startGlobalPx, currGlobalPx;
     IDragHandler* target = nullptr;
 
     if (mediator.onDragStart(startRawX, startRawY, currentRawX, currentRawY,
-                             stepDeltaRawX, stepDeltaRawY, startLocal, currLocal,
-                             startGlobal, currGlobal, target))
+                             stepDeltaRawX, stepDeltaRawY, startLocalPt, currLocalPt,
+                             startGlobalPt, currGlobalPt, startLocalPx, currLocalPx,
+                             startGlobalPx, currGlobalPx, target))
     {
         if (target != nullptr)
         {
             // Generate an Event object and notify the handler
-            juce::Point<float> delta(0.0f, 0.0f);
-            DragStartEvent event(startLocal, currLocal, delta, startGlobal, currGlobal);
+            juce::Point<float> deltaPt(0.0f, 0.0f);
+            juce::Point<float> deltaPx(0.0f, 0.0f);
+            DragStartEvent event(startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt,
+                                startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx);
             target->onDragStart(event);
         }
     }
@@ -49,20 +50,19 @@ void DragDetector::onDragMoveRaw(float startRawX, float startRawY,
                                  float stepDeltaRawX, float stepDeltaRawY)
 {
 #if JUCE_ANDROID
-    juce::Point<float> startLocal;
-    juce::Point<float> currLocal;
-    juce::Point<float> delta;
-    juce::Point<float> startGlobal;
-    juce::Point<float> currGlobal;
+    juce::Point<float> startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt;
+    juce::Point<float> startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx;
 
     if (mediator.onDragMove(startRawX, startRawY, currentRawX, currentRawY,
-                            stepDeltaRawX, stepDeltaRawY, startLocal, currLocal,
-                            delta, startGlobal, currGlobal))
+                            stepDeltaRawX, stepDeltaRawY, startLocalPt, currLocalPt,
+                            deltaPt, startGlobalPt, currGlobalPt, startLocalPx, currLocalPx,
+                            deltaPx, startGlobalPx, currGlobalPx))
     {
         IDragHandler* target = mediator.getActiveDragHandler();
         if (target != nullptr)
         {
-            DragMoveEvent event(startLocal, currLocal, delta, startGlobal, currGlobal);
+            DragMoveEvent event(startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt,
+                               startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx);
             target->onDragMove(event);
         }
     }
@@ -76,19 +76,18 @@ void DragDetector::onDragEndRaw(float startRawX, float startRawY,
 #if JUCE_ANDROID
     IDragHandler* target = mediator.getActiveDragHandler();
 
-    juce::Point<float> startLocal;
-    juce::Point<float> currLocal;
-    juce::Point<float> delta;
-    juce::Point<float> startGlobal;
-    juce::Point<float> currGlobal;
+    juce::Point<float> startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt;
+    juce::Point<float> startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx;
 
     if (mediator.onDragEnd(startRawX, startRawY, currentRawX, currentRawY,
-                           stepDeltaRawX, stepDeltaRawY, startLocal, currLocal,
-                           delta, startGlobal, currGlobal))
+                           stepDeltaRawX, stepDeltaRawY, startLocalPt, currLocalPt,
+                           deltaPt, startGlobalPt, currGlobalPt, startLocalPx, currLocalPx,
+                           deltaPx, startGlobalPx, currGlobalPx))
     {
         if (target != nullptr)
         {
-            DragEndEvent event(startLocal, currLocal, delta, startGlobal, currGlobal);
+            DragEndEvent event(startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt,
+                              startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx);
             target->onDragEnd(event);
         }
     }

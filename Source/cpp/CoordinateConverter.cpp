@@ -49,3 +49,13 @@ bool CoordinateConverter::rawToComponentLocalAndGlobal(
     }
     return false;
 }
+
+juce::Point<float> CoordinateConverter::logicalToPhysical(const juce::Point<float>& logical)
+{
+    return juce::Desktop::getInstance().getDisplays().logicalToPhysical(logical);
+}
+
+juce::Point<float> CoordinateConverter::physicalToLogical(const juce::Point<float>& physical)
+{
+    return juce::Desktop::getInstance().getDisplays().physicalToLogical(physical);
+}
