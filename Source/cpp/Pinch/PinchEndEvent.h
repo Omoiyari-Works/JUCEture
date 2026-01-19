@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../GestureEvent.h"
+#include "../CoordinateAccessor.h"
 #include <JuceHeader.h>
 
 class PinchEndEvent : public GestureEvent
@@ -8,21 +9,18 @@ class PinchEndEvent : public GestureEvent
   public:
     PinchEndEvent(const juce::Point<float>& focusLocalPt,
                   const juce::Point<float>& focusGlobalPt,
-                  const juce::Point<float>& focusLocalPixels,
-                  const juce::Point<float>& focusGlobalPixels);
+                  float rawFocusGlobalX, float rawFocusGlobalY);
     ~PinchEndEvent();
 
-    // Get coordinates in Pt (logical coordinates with DPI scaling)
-    juce::Point<float> getFocusLocalInPt() const;
-    juce::Point<float> getFocusGlobalInPt() const;
+    // Get focus local coordinates (supports both Pt and Pixels via .inPt() or .inPixels())
+    CoordinateAccessor getFocusLocal() const;
 
-    // Get coordinates in Pixels (physical coordinates)
-    juce::Point<float> getFocusLocalInPixels() const;
-    juce::Point<float> getFocusGlobalInPixels() const;
+    // Get focus global coordinates (supports both Pt and Pixels via .inPt() or .inPixels())
+    CoordinateAccessor getFocusGlobal() const;
 
   private:
     juce::Point<float> focusLocalPt;
     juce::Point<float> focusGlobalPt;
-    juce::Point<float> focusLocalPixels;
-    juce::Point<float> focusGlobalPixels;
+    float rawFocusGlobalX;
+    float rawFocusGlobalY;
 };

@@ -26,7 +26,7 @@ bool SingleTapDetector::onRawInput(float rawX, float rawY)
     {
         if (target != nullptr)
         {
-            SingleTapEvent event(localPt, globalPt, localPx, globalPx);
+            SingleTapEvent event(localPt, globalPt, rawX, rawY);
             target->onSingleTap(event);
             return true;
         }

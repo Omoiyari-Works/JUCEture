@@ -8,8 +8,7 @@ PinchScaleEvent::PinchScaleEvent(const juce::Point<float>& focusLocalPt,
                                  float scaleFactorTotalX,
                                  float scaleFactorTotalY,
                                  const juce::Point<float>& focusGlobalPt,
-                                 const juce::Point<float>& focusLocalPixels,
-                                 const juce::Point<float>& focusGlobalPixels)
+                                 float rawFocusGlobalX, float rawFocusGlobalY)
     : GestureEvent(), focusLocalPt(focusLocalPt),
       scaleFactorStep(scaleFactorStep),
       scaleFactorStepX(scaleFactorStepX),
@@ -18,8 +17,8 @@ PinchScaleEvent::PinchScaleEvent(const juce::Point<float>& focusLocalPt,
       scaleFactorTotalX(scaleFactorTotalX),
       scaleFactorTotalY(scaleFactorTotalY),
       focusGlobalPt(focusGlobalPt),
-      focusLocalPixels(focusLocalPixels),
-      focusGlobalPixels(focusGlobalPixels)
+      rawFocusGlobalX(rawFocusGlobalX),
+      rawFocusGlobalY(rawFocusGlobalY)
 {
 }
 
@@ -27,24 +26,14 @@ PinchScaleEvent::~PinchScaleEvent()
 {
 }
 
-juce::Point<float> PinchScaleEvent::getFocusLocalInPt() const
+CoordinateAccessor PinchScaleEvent::getFocusLocal() const
 {
-    return focusLocalPt;
+    return CoordinateAccessor(focusLocalPt);
 }
 
-juce::Point<float> PinchScaleEvent::getFocusGlobalInPt() const
+CoordinateAccessor PinchScaleEvent::getFocusGlobal() const
 {
-    return focusGlobalPt;
-}
-
-juce::Point<float> PinchScaleEvent::getFocusLocalInPixels() const
-{
-    return focusLocalPixels;
-}
-
-juce::Point<float> PinchScaleEvent::getFocusGlobalInPixels() const
-{
-    return focusGlobalPixels;
+    return CoordinateAccessor(focusGlobalPt, rawFocusGlobalX, rawFocusGlobalY);
 }
 
 float PinchScaleEvent::getScaleFactorStep() const

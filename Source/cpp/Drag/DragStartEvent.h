@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../GestureEvent.h"
+#include "../CoordinateAccessor.h"
 #include <JuceHeader.h>
 
 class DragStartEvent : public GestureEvent
@@ -11,26 +12,24 @@ class DragStartEvent : public GestureEvent
                    const juce::Point<float>& deltaFromLastPt,
                    const juce::Point<float>& startGlobalPt,
                    const juce::Point<float>& currentGlobalPt,
-                   const juce::Point<float>& startLocalPixels,
-                   const juce::Point<float>& currentLocalPixels,
-                   const juce::Point<float>& deltaFromLastPixels,
-                   const juce::Point<float>& startGlobalPixels,
-                   const juce::Point<float>& currentGlobalPixels);
+                   float rawStartGlobalX, float rawStartGlobalY,
+                   float rawCurrentGlobalX, float rawCurrentGlobalY);
     ~DragStartEvent();
 
-    // Get coordinates in Pt (logical coordinates with DPI scaling)
-    juce::Point<float> getStartLocalInPt() const;
-    juce::Point<float> getCurrentLocalInPt() const;
-    juce::Point<float> getDeltaFromLastInPt() const;
-    juce::Point<float> getStartGlobalInPt() const;
-    juce::Point<float> getCurrentGlobalInPt() const;
+    // Get start local coordinates (supports both Pt and Pixels via .inPt() or .inPixels())
+    CoordinateAccessor getStartLocal() const;
 
-    // Get coordinates in Pixels (physical coordinates)
-    juce::Point<float> getStartLocalInPixels() const;
-    juce::Point<float> getCurrentLocalInPixels() const;
-    juce::Point<float> getDeltaFromLastInPixels() const;
-    juce::Point<float> getStartGlobalInPixels() const;
-    juce::Point<float> getCurrentGlobalInPixels() const;
+    // Get current local coordinates (supports both Pt and Pixels via .inPt() or .inPixels())
+    CoordinateAccessor getCurrentLocal() const;
+
+    // Get delta coordinates (supports both Pt and Pixels via .inPt() or .inPixels())
+    CoordinateAccessor getDelta() const;
+
+    // Get start global coordinates (supports both Pt and Pixels via .inPt() or .inPixels())
+    CoordinateAccessor getStartGlobal() const;
+
+    // Get current global coordinates (supports both Pt and Pixels via .inPt() or .inPixels())
+    CoordinateAccessor getCurrentGlobal() const;
 
   private:
     juce::Point<float> startLocalPt;
@@ -38,9 +37,8 @@ class DragStartEvent : public GestureEvent
     juce::Point<float> deltaFromLastPt;
     juce::Point<float> startGlobalPt;
     juce::Point<float> currentGlobalPt;
-    juce::Point<float> startLocalPixels;
-    juce::Point<float> currentLocalPixels;
-    juce::Point<float> deltaFromLastPixels;
-    juce::Point<float> startGlobalPixels;
-    juce::Point<float> currentGlobalPixels;
+    float rawStartGlobalX;
+    float rawStartGlobalY;
+    float rawCurrentGlobalX;
+    float rawCurrentGlobalY;
 };

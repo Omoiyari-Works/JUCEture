@@ -2,10 +2,9 @@
 
 LongTapEvent::LongTapEvent(const juce::Point<float>& localPointPt,
                            const juce::Point<float>& globalPointPt,
-                           const juce::Point<float>& localPointPixels,
-                           const juce::Point<float>& globalPointPixels)
-    : GestureEvent(), localPointPt(localPointPt), globalPointPt(globalPointPt),
-      localPointPixels(localPointPixels), globalPointPixels(globalPointPixels)
+                           float rawGlobalX, float rawGlobalY)
+    : GestureEvent(), localPt(localPointPt), globalPt(globalPointPt),
+      rawGlobalX(rawGlobalX), rawGlobalY(rawGlobalY)
 {
 }
 
@@ -13,22 +12,12 @@ LongTapEvent::~LongTapEvent()
 {
 }
 
-juce::Point<float> LongTapEvent::getLocalPointInPt() const
+CoordinateAccessor LongTapEvent::getLocal() const
 {
-    return localPointPt;
+    return CoordinateAccessor(localPt);
 }
 
-juce::Point<float> LongTapEvent::getGlobalPointInPt() const
+CoordinateAccessor LongTapEvent::getGlobal() const
 {
-    return globalPointPt;
-}
-
-juce::Point<float> LongTapEvent::getLocalPointInPixels() const
-{
-    return localPointPixels;
-}
-
-juce::Point<float> LongTapEvent::getGlobalPointInPixels() const
-{
-    return globalPointPixels;
+    return CoordinateAccessor(globalPt, rawGlobalX, rawGlobalY);
 }

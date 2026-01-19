@@ -26,7 +26,7 @@ bool LongTapDetector::onRawInput(float rawX, float rawY)
     {
         if (target != nullptr)
         {
-            LongTapEvent event(localPt, globalPt, localPx, globalPx);
+            LongTapEvent event(localPt, globalPt, rawX, rawY);
             target->onLongTap(event);
             return true;
         }

@@ -36,9 +36,8 @@ void DragDetector::onDragStartRaw(float startRawX, float startRawY,
         {
             // Generate an Event object and notify the handler
             juce::Point<float> deltaPt(0.0f, 0.0f);
-            juce::Point<float> deltaPx(0.0f, 0.0f);
             DragStartEvent event(startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt,
-                                startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx);
+                                startRawX, startRawY, currentRawX, currentRawY);
             target->onDragStart(event);
         }
     }
@@ -62,7 +61,7 @@ void DragDetector::onDragMoveRaw(float startRawX, float startRawY,
         if (target != nullptr)
         {
             DragMoveEvent event(startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt,
-                               startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx);
+                               startRawX, startRawY, currentRawX, currentRawY);
             target->onDragMove(event);
         }
     }
@@ -87,7 +86,7 @@ void DragDetector::onDragEndRaw(float startRawX, float startRawY,
         if (target != nullptr)
         {
             DragEndEvent event(startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt,
-                              startLocalPx, currLocalPx, deltaPx, startGlobalPx, currGlobalPx);
+                              startRawX, startRawY, currentRawX, currentRawY);
             target->onDragEnd(event);
         }
     }

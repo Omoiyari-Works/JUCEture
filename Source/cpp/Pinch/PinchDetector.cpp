@@ -43,7 +43,7 @@ void PinchDetector::onPinchStartRaw(float focusRawX, float focusRawY,
     {
         if (target != nullptr)
         {
-            PinchStartEvent event(focusLocalPt, focusGlobalPt, focusLocalPx, focusGlobalPx);
+            PinchStartEvent event(focusLocalPt, focusGlobalPt, focusRawX, focusRawY);
             target->onPinchStart(event);
         }
     }
@@ -72,7 +72,7 @@ void PinchDetector::onPinchScaleRaw(float focusRawX, float focusRawY,
             PinchScaleEvent event(focusLocalPt,
                                   scaleFactorStep, scaleFactorStepX, scaleFactorStepY,
                                   totalScaleFactor, totalScaleFactorX, totalScaleFactorY,
-                                  focusGlobalPt, focusLocalPx, focusGlobalPx);
+                                  focusGlobalPt, focusRawX, focusRawY);
             target->onPinchScale(event);
         }
     }
@@ -95,7 +95,7 @@ void PinchDetector::onPinchEndRaw(float focusRawX, float focusRawY,
     {
         if (target != nullptr)
         {
-            PinchEndEvent event(focusLocalPt, focusGlobalPt, focusLocalPx, focusGlobalPx);
+            PinchEndEvent event(focusLocalPt, focusGlobalPt, focusRawX, focusRawY);
             target->onPinchEnd(event);
         }
     }

@@ -5,16 +5,13 @@ DragMoveEvent::DragMoveEvent(const juce::Point<float>& startLocalPt,
                              const juce::Point<float>& deltaFromLastPt,
                              const juce::Point<float>& startGlobalPt,
                              const juce::Point<float>& currentGlobalPt,
-                             const juce::Point<float>& startLocalPixels,
-                             const juce::Point<float>& currentLocalPixels,
-                             const juce::Point<float>& deltaFromLastPixels,
-                             const juce::Point<float>& startGlobalPixels,
-                             const juce::Point<float>& currentGlobalPixels)
+                             float rawStartGlobalX, float rawStartGlobalY,
+                             float rawCurrentGlobalX, float rawCurrentGlobalY)
     : GestureEvent(), startLocalPt(startLocalPt), currentLocalPt(currentLocalPt),
       deltaFromLastPt(deltaFromLastPt), startGlobalPt(startGlobalPt),
-      currentGlobalPt(currentGlobalPt), startLocalPixels(startLocalPixels),
-      currentLocalPixels(currentLocalPixels), deltaFromLastPixels(deltaFromLastPixels),
-      startGlobalPixels(startGlobalPixels), currentGlobalPixels(currentGlobalPixels)
+      currentGlobalPt(currentGlobalPt),
+      rawStartGlobalX(rawStartGlobalX), rawStartGlobalY(rawStartGlobalY),
+      rawCurrentGlobalX(rawCurrentGlobalX), rawCurrentGlobalY(rawCurrentGlobalY)
 {
 }
 
@@ -22,52 +19,27 @@ DragMoveEvent::~DragMoveEvent()
 {
 }
 
-juce::Point<float> DragMoveEvent::getStartLocalInPt() const
+CoordinateAccessor DragMoveEvent::getStartLocal() const
 {
-    return startLocalPt;
+    return CoordinateAccessor(startLocalPt);
 }
 
-juce::Point<float> DragMoveEvent::getCurrentLocalInPt() const
+CoordinateAccessor DragMoveEvent::getCurrentLocal() const
 {
-    return currentLocalPt;
+    return CoordinateAccessor(currentLocalPt);
 }
 
-juce::Point<float> DragMoveEvent::getDeltaFromLastInPt() const
+CoordinateAccessor DragMoveEvent::getDelta() const
 {
-    return deltaFromLastPt;
+    return CoordinateAccessor(deltaFromLastPt);
 }
 
-juce::Point<float> DragMoveEvent::getStartGlobalInPt() const
+CoordinateAccessor DragMoveEvent::getStartGlobal() const
 {
-    return startGlobalPt;
+    return CoordinateAccessor(startGlobalPt, rawStartGlobalX, rawStartGlobalY);
 }
 
-juce::Point<float> DragMoveEvent::getCurrentGlobalInPt() const
+CoordinateAccessor DragMoveEvent::getCurrentGlobal() const
 {
-    return currentGlobalPt;
-}
-
-juce::Point<float> DragMoveEvent::getStartLocalInPixels() const
-{
-    return startLocalPixels;
-}
-
-juce::Point<float> DragMoveEvent::getCurrentLocalInPixels() const
-{
-    return currentLocalPixels;
-}
-
-juce::Point<float> DragMoveEvent::getDeltaFromLastInPixels() const
-{
-    return deltaFromLastPixels;
-}
-
-juce::Point<float> DragMoveEvent::getStartGlobalInPixels() const
-{
-    return startGlobalPixels;
-}
-
-juce::Point<float> DragMoveEvent::getCurrentGlobalInPixels() const
-{
-    return currentGlobalPixels;
+    return CoordinateAccessor(currentGlobalPt, rawCurrentGlobalX, rawCurrentGlobalY);
 }
