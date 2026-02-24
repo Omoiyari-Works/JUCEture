@@ -1,6 +1,7 @@
 #include "SingleTap/SingleTapDetector.h"
 #include "Drag/DragDetector.h"
 #include "Pinch/PinchDetector.h"
+#include "LongTap/LongTapDetector.h"
 #include "GestureMediator.h"
 #include <JuceHeader.h>
 #if JUCE_ANDROID
@@ -13,6 +14,7 @@
 static std::unique_ptr<SingleTapDetector> gSingleTapDetector;
 static std::unique_ptr<DragDetector> gDragDetector;
 static std::unique_ptr<PinchDetector> gPinchDetector;
+static std::unique_ptr<LongTapDetector> gLongTapDetector;
 
 // Viewへのattach状態管理
 static bool gViewAttached = false;
@@ -27,25 +29,35 @@ bool attachGestureListenerOnce()
 {
     std::lock_guard<std::mutex> lock(gAttachMutex);
     if (gViewAttached)
+    {
         return true;
+    }
 
     auto* peer = juce::ComponentPeer::getPeer(0);
     if (peer == nullptr)
+    {
         return false;
+    }
 
     if (auto* env = juce::getEnv())
     {
         auto viewObj = static_cast<jobject>(peer->getNativeHandle());
         if (viewObj == nullptr)
+        {
             return false;
+        }
 
         const jclass helperClass = env->FindClass("com/juceture/android/NotifierGestureFromAndroid");
         if (helperClass == nullptr)
+        {
             return false;
+        }
 
         const jmethodID attachMethod = env->GetStaticMethodID(helperClass, "attach", "(Landroid/view/View;J)V");
         if (attachMethod == nullptr)
+        {
             return false;
+        }
 
         // nativePtrは0で良い（実際には使われていない）
         env->CallStaticVoidMethod(helperClass, attachMethod, viewObj, static_cast<jlong>(0));
@@ -65,22 +77,24 @@ void initializeDetectors()
     gSingleTapDetector = std::make_unique<SingleTapDetector>();
     gDragDetector = std::make_unique<DragDetector>();
     gPinchDetector = std::make_unique<PinchDetector>();
+    gLongTapDetector = std::make_unique<LongTapDetector>();
     gDetectorsInitialized = true;
 }
 
 extern "C"
 {
-    JNIEXPORT void JNICALL
+    JNIEXPORT jboolean JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onSingleTap(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat rawX, jfloat rawY,
         jfloat density)
     {
         juce::ignoreUnused(density);
-
         if (gSingleTapDetector != nullptr)
         {
-            gSingleTapDetector->onRawInput(rawX, rawY);
+            bool result = gSingleTapDetector->onRawInput(rawX, rawY);
+            return result ? JNI_TRUE : JNI_FALSE;
         }
+        return JNI_FALSE;
     }
 
     JNIEXPORT void JNICALL
@@ -131,43 +145,63 @@ extern "C"
     JNIEXPORT void JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onPinchStart(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat focusXInView,
-        jfloat focusYInView, jfloat scaleFactorStep, jfloat density,
+        jfloat focusYInView, jfloat scaleFactorStep,
+        jfloat scaleFactorStepX, jfloat scaleFactorStepY,
+        jfloat density,
         jlong /*ownerPtrLong*/)
     {
         juce::ignoreUnused(density);
 
         if (gPinchDetector != nullptr)
         {
-            gPinchDetector->onPinchStartRaw(focusXInView, focusYInView, scaleFactorStep);
+            gPinchDetector->onPinchStartRaw(focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
         }
     }
 
     JNIEXPORT void JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onPinchScale(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat focusXInView,
-        jfloat focusYInView, jfloat scaleFactorStep, jfloat density,
+        jfloat focusYInView, jfloat scaleFactorStep,
+        jfloat scaleFactorStepX, jfloat scaleFactorStepY,
+        jfloat density,
         jlong /*ownerPtrLong*/)
     {
         juce::ignoreUnused(density);
 
         if (gPinchDetector != nullptr)
         {
-            gPinchDetector->onPinchScaleRaw(focusXInView, focusYInView, scaleFactorStep);
+            gPinchDetector->onPinchScaleRaw(focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
         }
     }
 
     JNIEXPORT void JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onPinchEnd(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat focusXInView,
-        jfloat focusYInView, jfloat scaleFactorStep, jfloat density,
+        jfloat focusYInView, jfloat scaleFactorStep,
+        jfloat scaleFactorStepX, jfloat scaleFactorStepY,
+        jfloat density,
         jlong /*ownerPtrLong*/)
     {
         juce::ignoreUnused(density);
 
         if (gPinchDetector != nullptr)
         {
-            gPinchDetector->onPinchEndRaw(focusXInView, focusYInView, scaleFactorStep);
+            gPinchDetector->onPinchEndRaw(focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
         }
+    }
+
+    JNIEXPORT jboolean JNICALL
+    Java_com_juceture_android_NotifierGestureFromAndroid_onLongTap(
+        JNIEnv* /*env*/, jclass /*clazz*/, jfloat rawX, jfloat rawY,
+        jfloat density)
+    {
+        juce::ignoreUnused(density);
+        if (gLongTapDetector != nullptr)
+        {
+            bool result = gLongTapDetector->onRawInput(rawX, rawY);
+            return result ? JNI_TRUE : JNI_FALSE;
+        }
+        return JNI_FALSE;
     }
 }
 #endif

@@ -9,7 +9,9 @@ bool initialize()
 {
 #if JUCE_ANDROID
     if (!attachGestureListenerOnce())
+    {
         return false;
+    }
     initializeDetectors();
     return true;
 #else
