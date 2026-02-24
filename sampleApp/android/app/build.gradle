@@ -90,18 +90,43 @@ android {
     }
 
     sourceSets {
+        def jucePropertiesFile = file("juce.properties")
+        def juceProperties = new Properties()
         def javaSourceDirs = [
-            "../../../../JUCE/modules/juce_core/native/javacore/init",
-             "../../../../JUCE/modules/juce_core/native/javacore/app",
-             "../../../../JUCE/modules/juce_gui_basics/native/javaopt/app",
-             "../../../Source/java"
+            "../../../Source/java"
         ]
+
+        // Load JUCE path from CMake export
+        if (jucePropertiesFile.exists()) {
+            juceProperties.load(new FileInputStream(jucePropertiesFile))
+            def juceModulePath = juceProperties.getProperty("JUCE_MODULES_PATH", "")
+            if (juceModulePath) {
+                println("Loading JUCE modules path from juce.properties: ${juceModulePath}")
+                javaSourceDirs.addAll([
+                    "${juceModulePath}/juce_core/native/javacore/init",
+                    "${juceModulePath}/juce_core/native/javacore/app",
+                    "${juceModulePath}/juce_gui_basics/native/javaopt/app"
+                ])
+            } else {
+                println("WARNING: juce.properties exists but JUCE_MODULES_PATH not found")
+            }
+        } else {
+            println("WARNING: juce.properties not found. Using fallback paths.")
+            // Fallback to default relative paths if juce.properties is not available
+            javaSourceDirs.addAll([
+                "../../../../JUCE/modules/juce_core/native/javacore/init",
+                "../../../../JUCE/modules/juce_core/native/javacore/app",
+                "../../../../JUCE/modules/juce_gui_basics/native/javaopt/app"
+            ])
+        }
 
         // Add only source directories that exist
         javaSourceDirs.each { dir ->
             def dirFile = file(dir)
             if (dirFile.exists()) {
                 main.java.srcDirs += dir
+            } else {
+                println("WARNING: Java source directory does not exist: ${dirFile.absolutePath}")
             }
         }
 

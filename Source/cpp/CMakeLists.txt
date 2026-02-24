@@ -216,6 +216,13 @@ endif()
 # Export JUCELIBRARYCODE_DIR for parent CMakeLists.txt if needed
 set(JUCELIBRARYCODE_DIR ${JUCELIBRARYCODE_DIR} CACHE PATH "Path to JuceLibraryCode directory")
 
+# Export JUCE path to Gradle's build.gradle
+# This allows build.gradle to dynamically set Java source directories based on the detected JUCE path
+if(JUCE_DIR_FOUND)
+    file(WRITE "${JUCETURE_ROOT_DIR}/sampleApp/android/app/juce.properties" "JUCE_MODULES_PATH=${JUCE_DIR_FOUND}/modules")
+    message(STATUS "Exported JUCE path to sampleApp/android/app/juce.properties")
+endif()
+
 add_library(SourceLib STATIC
     # Common files
     CoordinateConverter.cpp
