@@ -1,6 +1,5 @@
 package com.yourcompany.androidguisampleproject;
 
-import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -11,12 +10,13 @@ import android.graphics.Color;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import com.rmsl.juce.JuceActivity;
 
 /**
  * JUCEアプリケーション用のカスタムActivity
  * エッジツーエッジ対応とシステムバーのインセット情報をネイティブ側に渡します
  */
-public class EdgeToEdgeActivity extends Activity {
+public class EdgeToEdgeActivity extends JuceActivity {
 
     // ネイティブメソッド（C++で実装）
     // 注意：JUCEのネイティブライブラリが既にロードされているので、
