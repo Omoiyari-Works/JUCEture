@@ -293,6 +293,11 @@ public final class NotifierGestureFromAndroid {
                             }
                         }
                     });
+            // Disable the minimum span threshold so that ScaleGestureDetector does not
+            // prematurely fire onScaleEnd when fingers are still on screen but close together.
+            if (android.os.Build.VERSION.SDK_INT >= 19) {
+                this.scaleDetector.setMinSpan(0);
+            }
         }
 
         @Override
