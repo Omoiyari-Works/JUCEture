@@ -96,16 +96,14 @@ android {
              "../../../JUCE/modules/juce_gui_basics/native/javaopt/app",
              "../../../Source/java"
         ]
-        
-        // Check if all source directories exist and throw error if not
+
+        // Add only source directories that exist
         javaSourceDirs.each { dir ->
             def dirFile = file(dir)
-            if (!dirFile.exists()) {
-                throw new Exception("Java source directory not found: ${dirFile.absolutePath}. Please check the path in build.gradle.")
+            if (dirFile.exists()) {
+                main.java.srcDirs += dir
             }
         }
-        
-        main.java.srcDirs += javaSourceDirs
 
         main.res.srcDirs +=
             []
