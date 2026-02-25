@@ -120,8 +120,8 @@ void GestureTestBox::handleSingleTapAtLocal(int localX, int localY)
 // ISingleTapHandler implementation
 void GestureTestBox::onSingleTap(const SingleTapEvent& event)
 {
-    const int lx = (int)event.getLocalPoint().x;
-    const int ly = (int)event.getLocalPoint().y;
+    const int lx = (int)event.getLocal().inPt().x;
+    const int ly = (int)event.getLocal().inPt().y;
     setTapText(juce::String("SingleTap (") + juce::String(lx) + ", " + juce::String(ly) + ")");
 }
 
@@ -129,33 +129,33 @@ void GestureTestBox::onSingleTap(const SingleTapEvent& event)
 void GestureTestBox::onDragStart(const DragStartEvent& event)
 {
     hasLastDragStart = true;
-    lastDragStart_start = event.getStartLocal();
-    lastDragStart_current = event.getCurrentLocal();
-    lastDragStart_delta = event.getDeltaFromLast();
+    lastDragStart_start = event.getStartLocal().inPt();
+    lastDragStart_current = event.getCurrentLocal().inPt();
+    lastDragStart_delta = event.getDelta().inPt();
     setStatusText(juce::String());
 }
 
 void GestureTestBox::onDragMove(const DragMoveEvent& event)
 {
     hasLastDragMove = true;
-    lastDragMove_start = event.getStartLocal();
-    lastDragMove_current = event.getCurrentLocal();
-    lastDragMove_delta = event.getDeltaFromLast();
+    lastDragMove_start = event.getStartLocal().inPt();
+    lastDragMove_current = event.getCurrentLocal().inPt();
+    lastDragMove_delta = event.getDelta().inPt();
     setStatusText(juce::String());
 }
 
 void GestureTestBox::onDragEnd(const DragEndEvent& event)
 {
     hasLastDragEnd = true;
-    lastDragEnd_start = event.getStartLocal();
-    lastDragEnd_current = event.getCurrentLocal();
-    lastDragEnd_delta = event.getDeltaFromLast();
+    lastDragEnd_start = event.getStartLocal().inPt();
+    lastDragEnd_current = event.getCurrentLocal().inPt();
+    lastDragEnd_delta = event.getDelta().inPt();
     setStatusText(juce::String());
 }
 
 void GestureTestBox::onPinchStart(const PinchStartEvent& event)
 {
-    const auto focusLocal = event.getFocusLocal();
+    const auto focusLocal = event.getFocusLocal().inPt();
     if (onPinchStartCb)
         onPinchStartCb(*this, focusLocal);
 
@@ -166,7 +166,7 @@ void GestureTestBox::onPinchStart(const PinchStartEvent& event)
 
 void GestureTestBox::onPinchScale(const PinchScaleEvent& event)
 {
-    const auto focusLocal = event.getFocusLocal();
+    const auto focusLocal = event.getFocusLocal().inPt();
     const auto scaleFactorStep = event.getScaleFactorStep();
     if (onPinchScaleCb)
         onPinchScaleCb(*this, focusLocal, scaleFactorStep);
@@ -179,7 +179,7 @@ void GestureTestBox::onPinchScale(const PinchScaleEvent& event)
 
 void GestureTestBox::onPinchEnd(const PinchEndEvent& event)
 {
-    const auto focusLocal = event.getFocusLocal();
+    const auto focusLocal = event.getFocusLocal().inPt();
     if (onPinchEndCb)
         onPinchEndCb(*this, focusLocal);
 

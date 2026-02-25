@@ -225,6 +225,8 @@ endif()
 
 add_library(SourceLib STATIC
     # Common files
+    CoordinateAccessor.cpp
+    CoordinateAccessor.h
     CoordinateConverter.cpp
     CoordinateConverter.h
     GestureEvent.cpp

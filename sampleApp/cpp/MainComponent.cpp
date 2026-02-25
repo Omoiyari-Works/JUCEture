@@ -307,12 +307,12 @@ void MainComponent::onSingleTap(const SingleTapEvent& event)
 
 void MainComponent::onDragStart(const DragStartEvent& event)
 {
-    updateDragIndicator(event.getStartLocal(), event.getCurrentLocal());
+    updateDragIndicator(event.getStartLocal().inPt(), event.getCurrentLocal().inPt());
 }
 
 void MainComponent::onDragMove(const DragMoveEvent& event)
 {
-    updateDragIndicator(event.getStartLocal(), event.getCurrentLocal());
+    updateDragIndicator(event.getStartLocal().inPt(), event.getCurrentLocal().inPt());
 }
 
 void MainComponent::onDragEnd(const DragEndEvent& event)
