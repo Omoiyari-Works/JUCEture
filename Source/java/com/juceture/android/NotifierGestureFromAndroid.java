@@ -113,6 +113,16 @@ public final class NotifierGestureFromAndroid {
         private boolean dragging = false;
         private boolean pinching = false;
         private boolean pinchGestureActive = false;
+        // True while C++ has received onPinchStart but not yet onPinchEnd.
+        // Used to suppress spurious onPinchStart/onPinchEnd pairs that
+        // ScaleGestureDetector emits when the finger span crosses its internal
+        // minimum-span threshold while both fingers are still on screen.
+        private boolean pinchSentToNative = false;
+        // Remaining pointer count after the current MotionEvent is applied.
+        // For ACTION_POINTER_UP/ACTION_UP/ACTION_CANCEL we subtract the pointer
+        // that is being released so callers can tell whether any fingers are still
+        // touching without waiting for the next event.
+        private int lastEffectivePointerCount = 0;
         private float dragStartRawX = 0f;
         private float dragStartRawY = 0f;
         private float lastRawX = 0f;
@@ -214,22 +224,30 @@ public final class NotifierGestureFromAndroid {
                             try {
                                 pinchGestureActive = true;
                                 ensurePinchingForScale();
-                                final float density = context.getResources().getDisplayMetrics().density;
-                                final float scaleFactorStep = detector.getScaleFactor();
+                                if (!pinchSentToNative) {
+                                    // First time starting this pinch - tell C++.
+                                    pinchSentToNative = true;
+                                    final float density = context.getResources().getDisplayMetrics().density;
+                                    final float scaleFactorStep = detector.getScaleFactor();
 
-                                float scaleX = 1.0f;
-                                float scaleY = 1.0f;
-                                if (android.os.Build.VERSION.SDK_INT >= 11) {
-                                    float spanX = detector.getCurrentSpanX();
-                                    float prevSpanX = detector.getPreviousSpanX();
-                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
+                                    float scaleX = 1.0f;
+                                    float scaleY = 1.0f;
+                                    if (android.os.Build.VERSION.SDK_INT >= 11) {
+                                        float spanX = detector.getCurrentSpanX();
+                                        float prevSpanX = detector.getPreviousSpanX();
+                                        scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
 
-                                    float spanY = detector.getCurrentSpanY();
-                                    float prevSpanY = detector.getPreviousSpanY();
-                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
+                                        float spanY = detector.getCurrentSpanY();
+                                        float prevSpanY = detector.getPreviousSpanY();
+                                        scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
+                                    }
+
+                                    onPinchStart(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
                                 }
-
-                                onPinchStart(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
+                                // If pinchSentToNative == true: ScaleGestureDetector restarted
+                                // because the span recovered after crossing the minimum-span
+                                // threshold.  C++ already has an active pinch, so skip
+                                // onPinchStart to avoid spurious Start/End/Start sequences.
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScaleBegin", err);
                             } catch (Throwable t) {
@@ -268,22 +286,33 @@ public final class NotifierGestureFromAndroid {
                         @Override
                         public void onScaleEnd(ScaleGestureDetector detector) {
                             try {
-                                final float scaleFactorStep = detector.getScaleFactor();
-                                final float density = context.getResources().getDisplayMetrics().density;
+                                if (lastEffectivePointerCount < MIN_POINTER_COUNT_FOR_PINCH
+                                        && pinchSentToNative) {
+                                    // Fingers genuinely lifted - end the pinch in C++.
+                                    pinchSentToNative = false;
+                                    final float scaleFactorStep = detector.getScaleFactor();
+                                    final float density = context.getResources().getDisplayMetrics().density;
 
-                                float scaleX = 1.0f;
-                                float scaleY = 1.0f;
-                                if (android.os.Build.VERSION.SDK_INT >= 11) {
-                                    float spanX = detector.getCurrentSpanX();
-                                    float prevSpanX = detector.getPreviousSpanX();
-                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
+                                    float scaleX = 1.0f;
+                                    float scaleY = 1.0f;
+                                    if (android.os.Build.VERSION.SDK_INT >= 11) {
+                                        float spanX = detector.getCurrentSpanX();
+                                        float prevSpanX = detector.getPreviousSpanX();
+                                        scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
 
-                                    float spanY = detector.getCurrentSpanY();
-                                    float prevSpanY = detector.getPreviousSpanY();
-                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
+                                        float spanY = detector.getCurrentSpanY();
+                                        float prevSpanY = detector.getPreviousSpanY();
+                                        scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
+                                    }
+
+                                    onPinchEnd(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
                                 }
-
-                                onPinchEnd(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
+                                // If lastEffectivePointerCount >= MIN_POINTER_COUNT_FOR_PINCH:
+                                // ScaleGestureDetector ended because the finger span fell below
+                                // its internal minimum-span threshold, but the fingers are still
+                                // on screen.  Suppress onPinchEnd so C++ keeps the pinch active.
+                                // ScaleGestureDetector will call onScaleBegin again once the span
+                                // recovers, and we will continue seamlessly.
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScaleEnd", err);
                             } catch (Throwable t) {
@@ -318,9 +347,41 @@ public final class NotifierGestureFromAndroid {
             } catch (Throwable t) {
                 // Ignore
             }
+
+            // Compute the number of pointers that will remain after this event.
+            // For lift events the departing pointer is still present in the event
+            // data (getPointerCount() still counts it), so subtract 1.
+            // ACTION_CANCEL terminates all pointers at once, so effective count is 0.
+            final boolean isPointerLiftEvent = (action == MotionEvent.ACTION_POINTER_UP
+                    || action == MotionEvent.ACTION_UP
+                    || action == MotionEvent.ACTION_CANCEL);
+            if (action == MotionEvent.ACTION_CANCEL) {
+                lastEffectivePointerCount = 0;
+            } else {
+                lastEffectivePointerCount = pointerCount - (isPointerLiftEvent ? 1 : 0);
+            }
+
             updatePinchingStateFromPointerCount(pointerCount);
             final boolean handledGesture = detector.onTouchEvent(event);
             final boolean handledScale = scaleDetector.onTouchEvent(event);
+
+            // Safety net: if a finger lift was not caught by ScaleGestureDetector
+            // (e.g., the scale session was already inactive due to the minimum-span
+            // threshold), we must still close the native pinch here so C++ is never
+            // left with a dangling active pinch after all fingers have gone.
+            if (pinchSentToNative && isPointerLiftEvent
+                    && lastEffectivePointerCount < MIN_POINTER_COUNT_FOR_PINCH) {
+                pinchSentToNative = false;
+                pinching = false;
+                try {
+                    final float density = context.getResources().getDisplayMetrics().density;
+                    onPinchEnd(lastRawFocusX, lastRawFocusY, 1.0f, 1.0f, 1.0f, density, nativePtr);
+                } catch (UnsatisfiedLinkError err) {
+                    Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in fallback onPinchEnd", err);
+                } catch (Throwable t) {
+                    Log.e("NotifierGestureFromAndroid", "Throwable in fallback onPinchEnd", t);
+                }
+            }
 
             // Determine if we should consume the event
             boolean handled = false;
@@ -447,6 +508,9 @@ public final class NotifierGestureFromAndroid {
 
         void setNativePtr(long nativePtr) {
             this.nativePtr = nativePtr;
+            // Reset pinch tracking when the native object changes so we never
+            // send a stale onPinchEnd to a new native peer.
+            pinchSentToNative = false;
         }
     }
 }
