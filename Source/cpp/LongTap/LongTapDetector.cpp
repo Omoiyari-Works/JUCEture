@@ -19,15 +19,14 @@ LongTapDetector::~LongTapDetector()
 bool LongTapDetector::onRawInput(float rawX, float rawY)
 {
 #if JUCE_ANDROID
-    juce::Point<float> local;
-    juce::Point<float> global;
+    juce::Point<float> localPt, globalPt, localPx, globalPx;
     ILongTapHandler* target = nullptr;
 
-    if (mediator.onLongTap(rawX, rawY, local, global, target))
+    if (mediator.onLongTap(rawX, rawY, localPt, globalPt, localPx, globalPx, target))
     {
         if (target != nullptr)
         {
-            LongTapEvent event(local, global);
+            LongTapEvent event(localPt, globalPt, rawX, rawY);
             target->onLongTap(event);
             return true;
         }

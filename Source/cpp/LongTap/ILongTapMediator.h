@@ -10,7 +10,10 @@ class ILongTapMediator
 
     // Long tap judgment and arbitration
     // Return value: true to notify
-    virtual bool onLongTap(float rawX, float rawY, juce::Point<float>& outLocal,
-                           juce::Point<float>& outGlobal,
+    virtual bool onLongTap(float rawX, float rawY,
+                           juce::Point<float>& outLocalPt,
+                           juce::Point<float>& outGlobalPt,
+                           juce::Point<float>& outLocalPixels,
+                           juce::Point<float>& outGlobalPixels,
                            ILongTapHandler*& outTarget) = 0;
 };

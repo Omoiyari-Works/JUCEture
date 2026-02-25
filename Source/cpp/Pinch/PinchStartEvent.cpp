@@ -1,8 +1,10 @@
 #include "PinchStartEvent.h"
 
-PinchStartEvent::PinchStartEvent(const juce::Point<float>& focusLocal,
-                                 const juce::Point<float>& focusGlobal)
-    : GestureEvent(), focusLocal(focusLocal), focusGlobal(focusGlobal)
+PinchStartEvent::PinchStartEvent(const juce::Point<float>& focusLocalPt,
+                                 const juce::Point<float>& focusGlobalPt,
+                                 float rawFocusGlobalX, float rawFocusGlobalY)
+    : GestureEvent(), focusLocalPt(focusLocalPt), focusGlobalPt(focusGlobalPt),
+      rawFocusGlobalX(rawFocusGlobalX), rawFocusGlobalY(rawFocusGlobalY)
 {
 }
 
@@ -10,12 +12,12 @@ PinchStartEvent::~PinchStartEvent()
 {
 }
 
-juce::Point<float> PinchStartEvent::getFocusLocal() const
+CoordinateAccessor PinchStartEvent::getFocusLocal() const
 {
-    return focusLocal;
+    return CoordinateAccessor(focusLocalPt);
 }
 
-juce::Point<float> PinchStartEvent::getFocusGlobal() const
+CoordinateAccessor PinchStartEvent::getFocusGlobal() const
 {
-    return focusGlobal;
+    return CoordinateAccessor(focusGlobalPt, rawFocusGlobalX, rawFocusGlobalY);
 }

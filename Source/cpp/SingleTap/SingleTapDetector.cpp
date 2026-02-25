@@ -19,15 +19,14 @@ SingleTapDetector::~SingleTapDetector()
 bool SingleTapDetector::onRawInput(float rawX, float rawY)
 {
 #if JUCE_ANDROID
-    juce::Point<float> local;
-    juce::Point<float> global;
+    juce::Point<float> localPt, globalPt, localPx, globalPx;
     ISingleTapHandler* target = nullptr;
 
-    if (mediator.onSingleTap(rawX, rawY, local, global, target))
+    if (mediator.onSingleTap(rawX, rawY, localPt, globalPt, localPx, globalPx, target))
     {
         if (target != nullptr)
         {
-            SingleTapEvent event(local, global);
+            SingleTapEvent event(localPt, globalPt, rawX, rawY);
             target->onSingleTap(event);
             return true;
         }

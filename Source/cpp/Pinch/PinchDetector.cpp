@@ -35,16 +35,15 @@ void PinchDetector::onPinchStartRaw(float focusRawX, float focusRawY,
     totalScaleFactorX = INITIAL_TOTAL_SCALE_FACTOR;
     totalScaleFactorY = INITIAL_TOTAL_SCALE_FACTOR;
 
-    juce::Point<float> focusLocal;
-    juce::Point<float> focusGlobal;
+    juce::Point<float> focusLocalPt, focusGlobalPt, focusLocalPx, focusGlobalPx;
     IPinchHandler* target = nullptr;
 
-    if (mediator.onPinchStart(focusRawX, focusRawY, scaleFactorStep, focusLocal,
-                              focusGlobal, target))
+    if (mediator.onPinchStart(focusRawX, focusRawY, scaleFactorStep, focusLocalPt,
+                              focusGlobalPt, focusLocalPx, focusGlobalPx, target))
     {
         if (target != nullptr)
         {
-            PinchStartEvent event(focusLocal, focusGlobal);
+            PinchStartEvent event(focusLocalPt, focusGlobalPt, focusRawX, focusRawY);
             target->onPinchStart(event);
         }
     }
@@ -62,19 +61,18 @@ void PinchDetector::onPinchScaleRaw(float focusRawX, float focusRawY,
     totalScaleFactorX *= scaleFactorStepX;
     totalScaleFactorY *= scaleFactorStepY;
 
-    juce::Point<float> focusLocal;
-    juce::Point<float> focusGlobal;
+    juce::Point<float> focusLocalPt, focusGlobalPt, focusLocalPx, focusGlobalPx;
 
-    if (mediator.onPinchScale(focusRawX, focusRawY, scaleFactorStep, focusLocal,
-                              focusGlobal))
+    if (mediator.onPinchScale(focusRawX, focusRawY, scaleFactorStep, focusLocalPt,
+                              focusGlobalPt, focusLocalPx, focusGlobalPx))
     {
         IPinchHandler* target = mediator.getActivePinchHandler();
         if (target != nullptr)
         {
-            PinchScaleEvent event(focusLocal,
+            PinchScaleEvent event(focusLocalPt,
                                   scaleFactorStep, scaleFactorStepX, scaleFactorStepY,
                                   totalScaleFactor, totalScaleFactorX, totalScaleFactorY,
-                                  focusGlobal);
+                                  focusGlobalPt, focusRawX, focusRawY);
             target->onPinchScale(event);
         }
     }
@@ -90,15 +88,14 @@ void PinchDetector::onPinchEndRaw(float focusRawX, float focusRawY,
     // onPinchEndでは総倍率は変更しない
     IPinchHandler* target = mediator.getActivePinchHandler();
 
-    juce::Point<float> focusLocal;
-    juce::Point<float> focusGlobal;
+    juce::Point<float> focusLocalPt, focusGlobalPt, focusLocalPx, focusGlobalPx;
 
-    if (mediator.onPinchEnd(focusRawX, focusRawY, scaleFactorStep, focusLocal,
-                            focusGlobal))
+    if (mediator.onPinchEnd(focusRawX, focusRawY, scaleFactorStep, focusLocalPt,
+                            focusGlobalPt, focusLocalPx, focusGlobalPx))
     {
         if (target != nullptr)
         {
-            PinchEndEvent event(focusLocal, focusGlobal);
+            PinchEndEvent event(focusLocalPt, focusGlobalPt, focusRawX, focusRawY);
             target->onPinchEnd(event);
         }
     }

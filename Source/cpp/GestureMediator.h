@@ -20,58 +20,84 @@ class GestureMediator : public ISingleTapMediator, public IDragMediator, public 
     static GestureMediator& getInstance();
 
     // ISingleTapMediator implementation
-    bool onSingleTap(float rawX, float rawY, juce::Point<float>& outLocal,
-                     juce::Point<float>& outGlobal,
+    bool onSingleTap(float rawX, float rawY,
+                     juce::Point<float>& outLocalPt,
+                     juce::Point<float>& outGlobalPt,
+                     juce::Point<float>& outLocalPixels,
+                     juce::Point<float>& outGlobalPixels,
                      ISingleTapHandler*& outTarget) override;
 
     // IDragMediator implementation
     bool onDragStart(float startRawX, float startRawY, float currentRawX,
                      float currentRawY, float stepDeltaRawX, float stepDeltaRawY,
-                     juce::Point<float>& outStartLocal,
-                     juce::Point<float>& outCurrentLocal,
-                     juce::Point<float>& outStartGlobal,
-                     juce::Point<float>& outCurrentGlobal,
+                     juce::Point<float>& outStartLocalPt,
+                     juce::Point<float>& outCurrentLocalPt,
+                     juce::Point<float>& outStartGlobalPt,
+                     juce::Point<float>& outCurrentGlobalPt,
+                     juce::Point<float>& outStartLocalPixels,
+                     juce::Point<float>& outCurrentLocalPixels,
+                     juce::Point<float>& outStartGlobalPixels,
+                     juce::Point<float>& outCurrentGlobalPixels,
                      IDragHandler*& outTarget) override;
 
     bool onDragMove(float startRawX, float startRawY, float currentRawX,
                     float currentRawY, float stepDeltaRawX, float stepDeltaRawY,
-                    juce::Point<float>& outStartLocal,
-                    juce::Point<float>& outCurrentLocal,
-                    juce::Point<float>& outDeltaFromLast,
-                    juce::Point<float>& outStartGlobal,
-                    juce::Point<float>& outCurrentGlobal) override;
+                    juce::Point<float>& outStartLocalPt,
+                    juce::Point<float>& outCurrentLocalPt,
+                    juce::Point<float>& outDeltaFromLastPt,
+                    juce::Point<float>& outStartGlobalPt,
+                    juce::Point<float>& outCurrentGlobalPt,
+                    juce::Point<float>& outStartLocalPixels,
+                    juce::Point<float>& outCurrentLocalPixels,
+                    juce::Point<float>& outDeltaFromLastPixels,
+                    juce::Point<float>& outStartGlobalPixels,
+                    juce::Point<float>& outCurrentGlobalPixels) override;
 
     bool onDragEnd(float startRawX, float startRawY, float currentRawX,
                    float currentRawY, float stepDeltaRawX, float stepDeltaRawY,
-                   juce::Point<float>& outStartLocal,
-                   juce::Point<float>& outCurrentLocal,
-                   juce::Point<float>& outDeltaFromLast,
-                   juce::Point<float>& outStartGlobal,
-                   juce::Point<float>& outCurrentGlobal) override;
+                   juce::Point<float>& outStartLocalPt,
+                   juce::Point<float>& outCurrentLocalPt,
+                   juce::Point<float>& outDeltaFromLastPt,
+                   juce::Point<float>& outStartGlobalPt,
+                   juce::Point<float>& outCurrentGlobalPt,
+                   juce::Point<float>& outStartLocalPixels,
+                   juce::Point<float>& outCurrentLocalPixels,
+                   juce::Point<float>& outDeltaFromLastPixels,
+                   juce::Point<float>& outStartGlobalPixels,
+                   juce::Point<float>& outCurrentGlobalPixels) override;
 
     // IDragMediator implementation
     IDragHandler* getActiveDragHandler() const override;
 
     // IPinchMediator implementation
     bool onPinchStart(float focusRawX, float focusRawY, float scaleFactorStep,
-                      juce::Point<float>& outFocusLocal,
-                      juce::Point<float>& outFocusGlobal,
+                      juce::Point<float>& outFocusLocalPt,
+                      juce::Point<float>& outFocusGlobalPt,
+                      juce::Point<float>& outFocusLocalPixels,
+                      juce::Point<float>& outFocusGlobalPixels,
                       IPinchHandler*& outTarget) override;
 
     bool onPinchScale(float focusRawX, float focusRawY, float scaleFactorStep,
-                      juce::Point<float>& outFocusLocal,
-                      juce::Point<float>& outFocusGlobal) override;
+                      juce::Point<float>& outFocusLocalPt,
+                      juce::Point<float>& outFocusGlobalPt,
+                      juce::Point<float>& outFocusLocalPixels,
+                      juce::Point<float>& outFocusGlobalPixels) override;
 
     bool onPinchEnd(float focusRawX, float focusRawY, float scaleFactorStep,
-                    juce::Point<float>& outFocusLocal,
-                    juce::Point<float>& outFocusGlobal) override;
+                    juce::Point<float>& outFocusLocalPt,
+                    juce::Point<float>& outFocusGlobalPt,
+                    juce::Point<float>& outFocusLocalPixels,
+                    juce::Point<float>& outFocusGlobalPixels) override;
 
     // IPinchMediator implementation
     IPinchHandler* getActivePinchHandler() const override;
 
     // ILongTapMediator implementation
-    bool onLongTap(float rawX, float rawY, juce::Point<float>& outLocal,
-                   juce::Point<float>& outGlobal,
+    bool onLongTap(float rawX, float rawY,
+                   juce::Point<float>& outLocalPt,
+                   juce::Point<float>& outGlobalPt,
+                   juce::Point<float>& outLocalPixels,
+                   juce::Point<float>& outGlobalPixels,
                    ILongTapHandler*& outTarget) override;
 
   private:

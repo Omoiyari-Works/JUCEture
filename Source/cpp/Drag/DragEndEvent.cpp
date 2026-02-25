@@ -1,13 +1,17 @@
 #include "DragEndEvent.h"
 
-DragEndEvent::DragEndEvent(const juce::Point<float>& startLocal,
-                           const juce::Point<float>& currentLocal,
-                           const juce::Point<float>& deltaFromLast,
-                           const juce::Point<float>& startGlobal,
-                           const juce::Point<float>& currentGlobal)
-    : GestureEvent(), startLocal(startLocal), currentLocal(currentLocal),
-      deltaFromLast(deltaFromLast), startGlobal(startGlobal),
-      currentGlobal(currentGlobal)
+DragEndEvent::DragEndEvent(const juce::Point<float>& startLocalPt,
+                           const juce::Point<float>& currentLocalPt,
+                           const juce::Point<float>& deltaFromLastPt,
+                           const juce::Point<float>& startGlobalPt,
+                           const juce::Point<float>& currentGlobalPt,
+                           float rawStartGlobalX, float rawStartGlobalY,
+                           float rawCurrentGlobalX, float rawCurrentGlobalY)
+    : GestureEvent(), startLocalPt(startLocalPt), currentLocalPt(currentLocalPt),
+      deltaFromLastPt(deltaFromLastPt), startGlobalPt(startGlobalPt),
+      currentGlobalPt(currentGlobalPt),
+      rawStartGlobalX(rawStartGlobalX), rawStartGlobalY(rawStartGlobalY),
+      rawCurrentGlobalX(rawCurrentGlobalX), rawCurrentGlobalY(rawCurrentGlobalY)
 {
 }
 
@@ -15,27 +19,27 @@ DragEndEvent::~DragEndEvent()
 {
 }
 
-juce::Point<float> DragEndEvent::getStartLocal() const
+CoordinateAccessor DragEndEvent::getStartLocal() const
 {
-    return startLocal;
+    return CoordinateAccessor(startLocalPt);
 }
 
-juce::Point<float> DragEndEvent::getCurrentLocal() const
+CoordinateAccessor DragEndEvent::getCurrentLocal() const
 {
-    return currentLocal;
+    return CoordinateAccessor(currentLocalPt);
 }
 
-juce::Point<float> DragEndEvent::getDeltaFromLast() const
+CoordinateAccessor DragEndEvent::getDelta() const
 {
-    return deltaFromLast;
+    return CoordinateAccessor(deltaFromLastPt);
 }
 
-juce::Point<float> DragEndEvent::getStartGlobal() const
+CoordinateAccessor DragEndEvent::getStartGlobal() const
 {
-    return startGlobal;
+    return CoordinateAccessor(startGlobalPt, rawStartGlobalX, rawStartGlobalY);
 }
 
-juce::Point<float> DragEndEvent::getCurrentGlobal() const
+CoordinateAccessor DragEndEvent::getCurrentGlobal() const
 {
-    return currentGlobal;
+    return CoordinateAccessor(currentGlobalPt, rawCurrentGlobalX, rawCurrentGlobalY);
 }

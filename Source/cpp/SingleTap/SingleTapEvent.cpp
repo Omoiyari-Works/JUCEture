@@ -1,8 +1,10 @@
 #include "SingleTapEvent.h"
 
-SingleTapEvent::SingleTapEvent(const juce::Point<float>& localPoint,
-                               const juce::Point<float>& globalPoint)
-    : GestureEvent(), localPoint(localPoint), globalPoint(globalPoint)
+SingleTapEvent::SingleTapEvent(const juce::Point<float>& localPointPt,
+                               const juce::Point<float>& globalPointPt,
+                               float rawGlobalX, float rawGlobalY)
+    : GestureEvent(), localPt(localPointPt), globalPt(globalPointPt),
+      rawGlobalX(rawGlobalX), rawGlobalY(rawGlobalY)
 {
 }
 
@@ -10,12 +12,12 @@ SingleTapEvent::~SingleTapEvent()
 {
 }
 
-juce::Point<float> SingleTapEvent::getLocalPoint() const
+CoordinateAccessor SingleTapEvent::getLocal() const
 {
-    return localPoint;
+    return CoordinateAccessor(localPt);
 }
 
-juce::Point<float> SingleTapEvent::getGlobalPoint() const
+CoordinateAccessor SingleTapEvent::getGlobal() const
 {
-    return globalPoint;
+    return CoordinateAccessor(globalPt, rawGlobalX, rawGlobalY);
 }
