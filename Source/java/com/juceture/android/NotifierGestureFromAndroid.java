@@ -120,6 +120,19 @@ public final class NotifierGestureFromAndroid {
         private float lastRawFocusX = 0f;
         private float lastRawFocusY = 0f;
         private boolean lastSingleTapHandled = false;
+        // The action of the MotionEvent currently being processed in onTouch().
+        // Set before calling scaleDetector.onTouchEvent() so that callbacks such as
+        // onScaleEnd() can inspect what triggered them.
+        private int currentTouchAction = MotionEvent.ACTION_UP;
+        // True when ScaleGestureDetector fired onScaleEnd prematurely because the span
+        // dropped below its internal minimum threshold, even though both fingers are
+        // still on screen.  In this state we suppress onPinchEnd until a real pointer-up
+        // event arrives.
+        private boolean spuriousPinchEndActive = false;
+        // Last scale values captured in onScale(), used to send the deferred onPinchEnd.
+        private float lastPinchScaleStep = 1.0f;
+        private float lastPinchScaleX = 1.0f;
+        private float lastPinchScaleY = 1.0f;
 
         OnTouchWrapper(Context context) {
             this.context = context;
@@ -214,6 +227,15 @@ public final class NotifierGestureFromAndroid {
                             try {
                                 pinchGestureActive = true;
                                 ensurePinchingForScale();
+
+                                if (spuriousPinchEndActive) {
+                                    // The span has risen back above the threshold after a
+                                    // spurious end.  Treat this as a continuation of the
+                                    // existing pinch so C++ never sees a spurious End/Start pair.
+                                    spuriousPinchEndActive = false;
+                                    return true;
+                                }
+
                                 final float density = context.getResources().getDisplayMetrics().density;
                                 final float scaleFactorStep = detector.getScaleFactor();
 
@@ -256,6 +278,11 @@ public final class NotifierGestureFromAndroid {
                                     scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
                                 }
 
+                                // Save latest scale values so the deferred onPinchEnd can use them.
+                                lastPinchScaleStep = scaleFactorStep;
+                                lastPinchScaleX = scaleX;
+                                lastPinchScaleY = scaleY;
+
                                 onPinchScale(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScale", err);
@@ -267,6 +294,18 @@ public final class NotifierGestureFromAndroid {
 
                         @Override
                         public void onScaleEnd(ScaleGestureDetector detector) {
+                            // ScaleGestureDetector fires onScaleEnd for two reasons:
+                            //   1. A pointer was lifted (ACTION_POINTER_UP / ACTION_UP) — genuine end.
+                            //   2. The span dropped below its internal minimum threshold while both
+                            //      fingers are still on screen (ACTION_MOVE) — spurious end.
+                            // In case 2 we must NOT notify C++ yet; we defer the notification until
+                            // a real pointer-up event arrives (handled in onTouch).
+                            if (currentTouchAction == MotionEvent.ACTION_MOVE) {
+                                spuriousPinchEndActive = true;
+                                // Keep pinchGestureActive = true so drag suppression continues.
+                                return;
+                            }
+
                             try {
                                 final float scaleFactorStep = detector.getScaleFactor();
                                 final float density = context.getResources().getDisplayMetrics().density;
@@ -289,15 +328,11 @@ public final class NotifierGestureFromAndroid {
                             } catch (Throwable t) {
                                 Log.e("NotifierGestureFromAndroid", "Throwable in onScaleEnd", t);
                             } finally {
+                                spuriousPinchEndActive = false;
                                 pinchGestureActive = false;
                             }
                         }
                     });
-            // Disable the minimum span threshold so that ScaleGestureDetector does not
-            // prematurely fire onScaleEnd when fingers are still on screen but close together.
-            if (android.os.Build.VERSION.SDK_INT >= 19) {
-                this.scaleDetector.setMinSpan(0);
-            }
         }
 
         @Override
@@ -324,8 +359,31 @@ public final class NotifierGestureFromAndroid {
                 // Ignore
             }
             updatePinchingStateFromPointerCount(pointerCount);
+            // Record action before detector calls so that onScaleEnd() can inspect it.
+            currentTouchAction = action;
             final boolean handledGesture = detector.onTouchEvent(event);
             final boolean handledScale = scaleDetector.onTouchEvent(event);
+
+            // If a spurious onScaleEnd fired while fingers were still on screen, the
+            // deferred onPinchEnd must be sent as soon as a real pointer-up arrives.
+            if (spuriousPinchEndActive &&
+                    (action == MotionEvent.ACTION_POINTER_UP ||
+                     action == MotionEvent.ACTION_UP ||
+                     action == MotionEvent.ACTION_CANCEL)) {
+                try {
+                    final float density = context.getResources().getDisplayMetrics().density;
+                    onPinchEnd(lastRawFocusX, lastRawFocusY,
+                            lastPinchScaleStep, lastPinchScaleX, lastPinchScaleY,
+                            density, nativePtr);
+                } catch (UnsatisfiedLinkError err) {
+                    Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in deferred onPinchEnd", err);
+                } catch (Throwable t) {
+                    Log.e("NotifierGestureFromAndroid", "Throwable in deferred onPinchEnd", t);
+                } finally {
+                    spuriousPinchEndActive = false;
+                    pinchGestureActive = false;
+                }
+            }
 
             // Determine if we should consume the event
             boolean handled = false;
