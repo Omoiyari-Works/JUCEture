@@ -8,7 +8,6 @@ import android.content.Context;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
 
 public final class NotifierGestureFromAndroid {
     private NotifierGestureFromAndroid() {
@@ -106,19 +105,18 @@ public final class NotifierGestureFromAndroid {
 
     private static final class OnTouchWrapper implements View.OnTouchListener {
         private final GestureDetector detector;
-        private final ScaleGestureDetector scaleDetector;
         private int refCount = 0;
         private final Context context;
         private long nativePtr = 0L;
         private boolean dragging = false;
         private boolean pinching = false;
-        private boolean pinchGestureActive = false;
         private float dragStartRawX = 0f;
         private float dragStartRawY = 0f;
         private float lastRawX = 0f;
         private float lastRawY = 0f;
         private float lastRawFocusX = 0f;
         private float lastRawFocusY = 0f;
+        private float lastPinchSpan = 0f;
         private boolean lastSingleTapHandled = false;
 
         OnTouchWrapper(Context context) {
@@ -206,169 +204,130 @@ public final class NotifierGestureFromAndroid {
                             return true;
                         }
                     });
-            this.scaleDetector = new ScaleGestureDetector(
-                    context,
-                    new ScaleGestureDetector.OnScaleGestureListener() {
-                        @Override
-                        public boolean onScaleBegin(ScaleGestureDetector detector) {
-                            try {
-                                pinchGestureActive = true;
-                                ensurePinchingForScale();
-                                final float density = context.getResources().getDisplayMetrics().density;
-                                final float scaleFactorStep = detector.getScaleFactor();
+        }
 
-                                float scaleX = 1.0f;
-                                float scaleY = 1.0f;
-                                if (android.os.Build.VERSION.SDK_INT >= 11) {
-                                    float spanX = detector.getCurrentSpanX();
-                                    float prevSpanX = detector.getPreviousSpanX();
-                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
+        /**
+         * Calculate the Euclidean distance between the first two pointers.
+         * Returns 0 if fewer than two pointers are present.
+         */
+        private float calculateSpan(MotionEvent e) {
+            if (e.getPointerCount() < 2) return 0f;
+            final float dx = e.getRawX(0) - e.getRawX(1);
+            final float dy = e.getRawY(0) - e.getRawY(1);
+            return (float) Math.sqrt(dx * dx + dy * dy);
+        }
 
-                                    float spanY = detector.getCurrentSpanY();
-                                    float prevSpanY = detector.getPreviousSpanY();
-                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
-                                }
-
-                                onPinchStart(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
-                            } catch (UnsatisfiedLinkError err) {
-                                Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScaleBegin", err);
-                            } catch (Throwable t) {
-                                Log.e("NotifierGestureFromAndroid", "Throwable in onScaleBegin", t);
-                            }
-                            return true;
-                        }
-
-                        @Override
-                        public boolean onScale(ScaleGestureDetector detector) {
-                            try {
-                                final float scaleFactorStep = detector.getScaleFactor();
-                                final float density = context.getResources().getDisplayMetrics().density;
-
-                                float scaleX = 1.0f;
-                                float scaleY = 1.0f;
-                                if (android.os.Build.VERSION.SDK_INT >= 11) {
-                                    float spanX = detector.getCurrentSpanX();
-                                    float prevSpanX = detector.getPreviousSpanX();
-                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
-
-                                    float spanY = detector.getCurrentSpanY();
-                                    float prevSpanY = detector.getPreviousSpanY();
-                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
-                                }
-
-                                onPinchScale(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
-                            } catch (UnsatisfiedLinkError err) {
-                                Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScale", err);
-                            } catch (Throwable t) {
-                                Log.e("NotifierGestureFromAndroid", "Throwable in onScale", t);
-                            }
-                            return true;
-                        }
-
-                        @Override
-                        public void onScaleEnd(ScaleGestureDetector detector) {
-                            try {
-                                final float scaleFactorStep = detector.getScaleFactor();
-                                final float density = context.getResources().getDisplayMetrics().density;
-
-                                float scaleX = 1.0f;
-                                float scaleY = 1.0f;
-                                if (android.os.Build.VERSION.SDK_INT >= 11) {
-                                    float spanX = detector.getCurrentSpanX();
-                                    float prevSpanX = detector.getPreviousSpanX();
-                                    scaleX = (prevSpanX > 0) ? spanX / prevSpanX : 1.0f;
-
-                                    float spanY = detector.getCurrentSpanY();
-                                    float prevSpanY = detector.getPreviousSpanY();
-                                    scaleY = (prevSpanY > 0) ? spanY / prevSpanY : 1.0f;
-                                }
-
-                                onPinchEnd(lastRawFocusX, lastRawFocusY, scaleFactorStep, scaleX, scaleY, density, nativePtr);
-                            } catch (UnsatisfiedLinkError err) {
-                                Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onScaleEnd", err);
-                            } catch (Throwable t) {
-                                Log.e("NotifierGestureFromAndroid", "Throwable in onScaleEnd", t);
-                            } finally {
-                                pinchGestureActive = false;
-                            }
-                        }
-                    });
+        /**
+         * Calculate the midpoint (focus) between the first two pointers.
+         * Returns the first pointer position if fewer than two pointers are present.
+         */
+        private float[] calculateFocus(MotionEvent e) {
+            if (e.getPointerCount() < 2) {
+                return new float[]{ e.getRawX(), e.getRawY() };
+            }
+            return new float[]{
+                (e.getRawX(0) + e.getRawX(1)) / 2f,
+                (e.getRawY(0) + e.getRawY(1)) / 2f
+            };
         }
 
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             final int action = event.getActionMasked();
+            final int pointerCount = event.getPointerCount();
+            final float density = context.getResources().getDisplayMetrics().density;
+
             if (action == MotionEvent.ACTION_DOWN) {
                 lastSingleTapHandled = false; // Reset for new touch sequence
             }
-            // Calculate raw focus coordinates from current pointers (used for pinching)
-            int pointerCount = 0;
+
+            // --- Custom pinch tracking (replaces ScaleGestureDetector) ---
+            // Pinch starts when a second finger touches down.
+            // Pinch ends ONLY when a finger actually lifts (ACTION_POINTER_UP drops count to 1),
+            // or the entire gesture is cancelled. Span distance never triggers pinch end.
             try {
-                pointerCount = event.getPointerCount();
-                if (pointerCount > 0) {
-                    float sumX = 0f;
-                    float sumY = 0f;
-                    for (int i = 0; i < pointerCount; ++i) {
-                        sumX += event.getRawX(i);
-                        sumY += event.getRawY(i);
-                    }
-                    lastRawFocusX = sumX / pointerCount;
-                    lastRawFocusY = sumY / pointerCount;
+                switch (action) {
+                    case MotionEvent.ACTION_POINTER_DOWN:
+                        if (pointerCount == MIN_POINTER_COUNT_FOR_PINCH) {
+                            // Second finger just touched down: start pinch
+                            terminateDragDueToPinch();
+                            pinching = true;
+                            lastPinchSpan = calculateSpan(event);
+                            final float[] startFocus = calculateFocus(event);
+                            lastRawFocusX = startFocus[0];
+                            lastRawFocusY = startFocus[1];
+                            onPinchStart(lastRawFocusX, lastRawFocusY,
+                                    1.0f, 1.0f, 1.0f, density, nativePtr);
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_MOVE:
+                        if (pinching && pointerCount >= MIN_POINTER_COUNT_FOR_PINCH) {
+                            final float newSpan = calculateSpan(event);
+                            // Scale factor relative to the previous frame.
+                            // Guard against division by zero when fingers are at the same point.
+                            final float scaleFactor = (lastPinchSpan > 1f) ? newSpan / lastPinchSpan : 1.0f;
+                            lastPinchSpan = newSpan;
+                            final float[] moveFocus = calculateFocus(event);
+                            lastRawFocusX = moveFocus[0];
+                            lastRawFocusY = moveFocus[1];
+                            onPinchScale(lastRawFocusX, lastRawFocusY,
+                                    scaleFactor, scaleFactor, scaleFactor, density, nativePtr);
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_POINTER_UP:
+                        // pointerCount is still the count BEFORE this pointer lifts.
+                        // When it equals 2, the lift reduces active fingers to 1: end pinch.
+                        if (pinching && pointerCount == MIN_POINTER_COUNT_FOR_PINCH) {
+                            // Compute focus from the finger that is NOT lifting.
+                            // getActionIndex() returns the index of the lifting pointer.
+                            final int liftingIndex = event.getActionIndex();
+                            final int remainingIndex = (liftingIndex == 0) ? 1 : 0;
+                            final float endFocusX = event.getRawX(remainingIndex);
+                            final float endFocusY = event.getRawY(remainingIndex);
+                            onPinchEnd(endFocusX, endFocusY,
+                                    1.0f, 1.0f, 1.0f, density, nativePtr);
+                            pinching = false;
+                            lastPinchSpan = 0f;
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        if (pinching) {
+                            onPinchEnd(lastRawFocusX, lastRawFocusY,
+                                    1.0f, 1.0f, 1.0f, density, nativePtr);
+                            pinching = false;
+                            lastPinchSpan = 0f;
+                        }
+                        break;
+
+                    default:
+                        break;
                 }
+            } catch (UnsatisfiedLinkError err) {
+                Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in pinch handling", err);
             } catch (Throwable t) {
-                // Ignore
+                Log.e("NotifierGestureFromAndroid", "Throwable in pinch handling", t);
             }
-            updatePinchingStateFromPointerCount(pointerCount);
+
+            // --- GestureDetector: tap, long-tap, drag ---
             final boolean handledGesture = detector.onTouchEvent(event);
-            final boolean handledScale = scaleDetector.onTouchEvent(event);
 
             // Determine if we should consume the event
             boolean handled = false;
             if (action == MotionEvent.ACTION_UP) {
-                // For ACTION_UP, check if ISingleTapHandler was found
-                // (onSingleTapUp() was called inside detector.onTouchEvent() and set
-                // lastSingleTapHandled)
-                if (handledScale) {
-                    // Only consume if it's actually a pinch gesture (not just scale detector
-                    // returning true)
-                    // Check if we're actually pinching
-                    if (pinching || pinchGestureActive) {
-                        handled = true;
-                    } else {
-                        // Scale detector returned true but not actually pinching, check single tap
-                        handled = lastSingleTapHandled;
-                    }
-                } else if (handledGesture) {
-                    handled = lastSingleTapHandled;
-                }
-            } else {
-                // For other actions (DOWN, MOVE, etc.), consume if gesture detector handled it
-                if (handledScale) {
-                    // Only consume if it's actually a pinch gesture (not just scale detector
-                    // returning true)
-                    // Check if we're actually pinching
-                    if (pinching || pinchGestureActive) {
-                        handled = true;
-                    } else {
-                        // Scale detector returned true but not actually pinching, don't consume
-                        // This allows JUCE's standard event handling to process the event
-                        handled = false;
-                    }
-                } else if (handledGesture) {
-                    // For ACTION_DOWN, we don't know yet if ISingleTapHandler will be found
-                    // So we don't consume the event, allowing JUCE's standard event handling
-                    if (action == MotionEvent.ACTION_DOWN) {
-                        handled = false;
-                    } else {
-                        // For MOVE, etc., consume if gesture detector handled it
-                        handled = handledGesture;
-                    }
-                }
+                handled = lastSingleTapHandled;
+            } else if (pinching) {
+                handled = true;
+            } else if (action != MotionEvent.ACTION_DOWN) {
+                handled = handledGesture;
             }
 
+            // Drag end on ACTION_UP / ACTION_CANCEL
             if ((action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) && dragging) {
                 try {
-                    final float density = context.getResources().getDisplayMetrics().density;
                     final float endRawX = event.getRawX();
                     final float endRawY = event.getRawY();
                     final float stepDeltaX = endRawX - lastRawX;
@@ -390,25 +349,6 @@ public final class NotifierGestureFromAndroid {
             }
 
             return handled;
-        }
-
-        private void ensurePinchingForScale() {
-            if (!pinching) {
-                pinching = true;
-                terminateDragDueToPinch();
-            }
-        }
-
-        private void updatePinchingStateFromPointerCount(int pointerCount) {
-            final boolean multiTouch = pointerCount >= MIN_POINTER_COUNT_FOR_PINCH;
-            if (multiTouch) {
-                if (!pinching) {
-                    pinching = true;
-                    terminateDragDueToPinch();
-                }
-            } else if (!pinchGestureActive) {
-                pinching = false;
-            }
         }
 
         private void terminateDragDueToPinch() {
