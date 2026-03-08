@@ -1,0 +1,291 @@
+# CircleCI Pipeline Configuration
+# See: https://circleci.com/docs/reference/configuration-reference
+#
+# 必要な CircleCI 環境変数:
+#   - CLAUDE_CODE_OAUTH_TOKEN : Claude Code の認証トークン
+#   - GH_PAT                 : GitHub PAT (repo スコープ) ビルド失敗時のプッシュに使用
+version: 2.1
+
+jobs:
+  build:
+    # Docker Compose を使用するため machine executor を使用
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large
+    environment:
+      GRADLE_CACHE_PATH: /home/circleci/project/.gradle_cache_mount
+    steps:
+      # ソースコードをチェックアウト
+      - checkout
+
+      # サブモジュールを初期化（checkout ステップは自動では行わない）
+      - run:
+          name: Initialize submodules
+          command: git submodule update --init --recursive
+
+      # ソースファイルのタイムスタンプを Git コミット日時に復元
+      # CircleCI の checkout もすべてのファイルを現在時刻で作成するため、
+      # キャッシュされたオブジェクトファイルより新しくなり Ninja が全て再コンパイルしてしまう。
+      # git-restore-mtime で各ファイルの最終コミット日時を設定することでキャッシュを有効にする。
+      - run:
+          name: Install git-restore-mtime
+          command: |
+            curl -sSL https://raw.githubusercontent.com/MestreLion/git-tools/main/git-restore-mtime \
+              -o /tmp/git-restore-mtime
+            chmod +x /tmp/git-restore-mtime
+            sudo mv /tmp/git-restore-mtime /usr/local/bin/git-restore-mtime
+
+      - run:
+          name: Restore file timestamps from git history
+          command: |
+            echo "Restoring file timestamps from git history..."
+            RESTORE_START=$(date +%s)
+
+            git-restore-mtime
+            git submodule foreach --recursive 'git-restore-mtime' > /dev/null
+
+            RESTORE_END=$(date +%s)
+            echo "Timestamp restoration completed in $((RESTORE_END - RESTORE_START)) seconds"
+
+      # CMake ソースファイルの結合ハッシュを生成してキャッシュキーに使用
+      - run:
+          name: Generate CMake source cache key
+          command: |
+            find . \( -name "CMakeLists.txt" -o \
+                      -path "*/Source/*.cpp" -o \
+                      -path "*/Source/*.h" \) \
+              2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum \
+              > /tmp/cmake_files_hash
+            echo "CMake cache key: $(cat /tmp/cmake_files_hash)"
+
+      # Gradle キャッシュの復元
+      # ~/.gradle/caches と ~/.gradle/wrapper をキャッシュしてビルド時間を短縮
+      - restore_cache:
+          keys:
+            - gradle-v1-{{ checksum "sampleApp/android/gradle/wrapper/gradle-wrapper.properties" }}
+            - gradle-v1-
+
+      # CMake ビルドキャッシュの復元
+      # JUCE の C++ ネイティブコードのビルド成果物をキャッシュして再ビルドを高速化
+      - restore_cache:
+          keys:
+            - cmake-v1-{{ checksum "/tmp/cmake_files_hash" }}
+            - cmake-v1-
+
+      # ディスク容量を確保
+      # Ubuntu ランナーのディスク容量は制限されているため不要なファイルを削除
+      - run:
+          name: Free disk space
+          command: |
+            echo "=== Freeing disk space ==="
+            df -h
+
+            sudo rm -rf /usr/local/lib/android || true
+            sudo rm -rf /usr/share/dotnet || true
+            sudo rm -rf /opt/ghc || true
+            sudo rm -rf /usr/local/share/boost || true
+            sudo apt-get autoremove -y || true
+            sudo apt-get clean || true
+            docker system prune -af || true
+
+            df -h
+
+      # Docker Compose によるビルド実行
+      # GRADLE_CACHE_PATH 環境変数にホスト側のキャッシュディレクトリを指定することで
+      # コンテナ内から CircleCI のキャッシュを利用できるようにする
+      # ビルド失敗時も後続の修正ステップへ引き継ぐためにビルド終了コードを最後に返す
+      - run:
+          name: Build with Docker Compose
+          command: |
+            echo "=== Build Time Measurement Started ==="
+            echo "Start time: $(date '+%Y-%m-%d %H:%M:%S')"
+            BUILD_START=$(date +%s)
+
+            echo "--- Phase 1: Cache preparation ---"
+            CACHE_START=$(date +%s)
+            mkdir -p .gradle_cache_mount
+            if [ -d ~/.gradle ]; then
+              cp -r ~/.gradle/* .gradle_cache_mount/ || true
+            fi
+            CACHE_END=$(date +%s)
+            echo "Cache preparation time: $((CACHE_END - CACHE_START)) seconds"
+
+            echo "--- Phase 2: Docker Compose build ---"
+            DOCKER_START=$(date +%s)
+            set +e
+            set -o pipefail
+            docker compose run android-debug 2>&1 | tee build.log
+            BUILD_EXIT_CODE=${PIPESTATUS[0]}
+            DOCKER_END=$(date +%s)
+            echo "Docker Compose build time: $((DOCKER_END - DOCKER_START)) seconds"
+
+            echo "--- Phase 3: Cache write-back ---"
+            WRITEBACK_START=$(date +%s)
+            mkdir -p ~/.gradle
+            cp -r .gradle_cache_mount/* ~/.gradle/ || true
+            WRITEBACK_END=$(date +%s)
+            echo "Cache write-back time: $((WRITEBACK_END - WRITEBACK_START)) seconds"
+
+            BUILD_END=$(date +%s)
+            echo "=== Build Time Measurement Summary ==="
+            echo "Total build time: $((BUILD_END - BUILD_START)) seconds"
+            echo "End time: $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "=================================="
+
+            exit $BUILD_EXIT_CODE
+
+      # CMake キャッシュの保存（常に実行）
+      # ビルド成否にかかわらず最新のビルド成果物をキャッシュする
+      - save_cache:
+          when: always
+          paths:
+            - sampleApp/android/.cxx
+            - sampleApp/android/.externalNativeBuild
+            - sampleApp/android/app/.cxx
+          key: cmake-v1-{{ checksum "/tmp/cmake_files_hash" }}
+
+      # Gradle キャッシュの保存（常に実行）
+      - save_cache:
+          when: always
+          paths:
+            - ~/.gradle/caches
+            - ~/.gradle/wrapper
+            - sampleApp/android/.gradle/configuration-cache
+          key: gradle-v1-{{ checksum "sampleApp/android/gradle/wrapper/gradle-wrapper.properties" }}
+
+      # ビルドログをアップロード（常に実行）
+      # ビルド失敗時の修正ステップがワークスペース内の build.log を直接参照するため
+      # アーティファクトへの保存はデバッグ用途
+      - store_artifacts:
+          when: always
+          path: build.log
+          destination: build-log
+
+      # Gradle ビルドプロファイルレポートをアップロード（常に実行）
+      - store_artifacts:
+          when: always
+          path: sampleApp/android/build/reports/profile
+          destination: gradle-build-profile
+
+      # ビルド成果物（APK）をZIP圧縮（ビルド成功時のみ）
+      - run:
+          name: Compress APK to ZIP
+          when: on_success
+          command: |
+            APK_FILES=$(find sampleApp/android/app/build/outputs/apk -name "*.apk" 2>/dev/null)
+            if [ -n "$APK_FILES" ]; then
+              echo "Found APK files:"
+              echo "$APK_FILES"
+              zip -9 apk-debug.zip $APK_FILES
+              echo "APK compressed successfully to apk-debug.zip"
+            else
+              echo "APK file not found"
+              exit 1
+            fi
+
+      # ビルド成果物（ZIP化されたAPK）をアップロード（ビルド成功時のみ）
+      - store_artifacts:
+          path: apk-debug.zip
+          destination: apk-debug
+
+      # ================================================================
+      # ビルド失敗時の自動修正
+      # 以下のステップは直前のステップが失敗した場合のみ実行される
+      # ================================================================
+
+      # Node.js をセットアップ（Claude Code CLI のために必要）
+      - run:
+          name: Setup Node.js for CI fix
+          when: on_fail
+          command: |
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+            node --version
+            npm --version
+
+      # Claude Code CLI をインストール
+      - run:
+          name: Install Claude Code CLI
+          when: on_fail
+          command: npm install -g @anthropic-ai/claude-code
+
+      # git identity を設定
+      - run:
+          name: Configure git identity
+          when: on_fail
+          command: |
+            git config user.name "Claude Agent"
+            git config user.email "claude@anthropic.com"
+
+      # git push 用の HTTPS 認証を設定
+      # CircleCI プロジェクト設定に GH_PAT (repo スコープの GitHub PAT) が必要
+      - run:
+          name: Configure git push credentials
+          when: on_fail
+          command: |
+            git remote set-url origin \
+              "https://x-access-token:${GH_PAT}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git"
+
+      # ビルドコンテキストをログ出力
+      - run:
+          name: Log build context
+          when: on_fail
+          command: |
+            echo "=== Build Context ==="
+            echo "Repository: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+            echo "Branch: ${CIRCLE_BRANCH}"
+            echo "Build number: ${CIRCLE_BUILD_NUM}"
+            echo "Build URL: ${CIRCLE_BUILD_URL}"
+
+      # Claude を使って CI 失敗を修正
+      # CircleCI 環境変数 CLAUDE_CODE_OAUTH_TOKEN が必要
+      - run:
+          name: Fix CI failure with Claude
+          when: on_fail
+          command: |
+            claude -p "CircleCI上で動作中。リポジトリへの書き込み権限あり。
+            # コンテキスト
+            - リポジトリ: ${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+            - ビルド番号: ${CIRCLE_BUILD_NUM}
+            - ブランチ: ${CIRCLE_BRANCH}
+            - ビルドURL: ${CIRCLE_BUILD_URL}
+            # タスク
+            1. build.log を読み、ビルドエラーの原因を特定
+            2. CI失敗を解決する最小限の変更のみ実行。リポジトリのスタイルに従う
+            3. 修正後、変更は作業ツリーに残す(コミット/プッシュは後続ステップで実行)
+            4. 実行不可能な場合は変更しない
+            # 制約
+            - **ユーザーは回答することができないので、質問や承認要求を絶対にしてはいけません**。自律的に修正すること。
+            - 大事なことなのでもう一度。**質問や承認要求等のユーザーからの回答を求める行為は絶対に絶対にしてはいけません。**
+            - 修正内容と対応エラー(ビルドログ行番号)を出力
+            " --model haiku --output-format text --allowedTools "Edit"
+
+      # 修正後の状態を確認
+      - run:
+          name: Check post-fix status
+          when: on_fail
+          command: |
+            echo "=== Git Status ==="
+            git status
+            echo "=== Changed Files ==="
+            git diff --name-only || echo "No changes"
+            echo "=== Diff Summary ==="
+            git diff --stat || echo "No changes"
+
+      # 変更をステージング・コミット・プッシュ
+      - run:
+          name: Commit and push fix
+          when: on_fail
+          command: |
+            git add .
+            if [[ -n $(git status -s) ]]; then
+              git commit -m "自動修正: CI失敗を修正"
+              git push -u origin "${CIRCLE_BRANCH}"
+            else
+              echo "No changes to commit."
+            fi
+
+workflows:
+  build-and-fix:
+    jobs:
+      - build
