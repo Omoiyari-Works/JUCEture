@@ -89,21 +89,48 @@ jobs:
         large-packages: true
         docker-images: true
 
-    - name: Build sample app
-      id: gradle_build
-      working-directory: sampleApp/android
+    - name: Build with Docker Compose
+      id: docker_build
+      continue-on-error: true
+      env:
+        GRADLE_CACHE_PATH: ${{ github.workspace }}/.gradle_cache_mount
       run: |
         echo "=== Build Time Measurement Started ==="
         echo "Start time: $(date '+%Y-%m-%d %H:%M:%S')"
         BUILD_START=$(date +%s)
 
-        chmod +x gradlew
-        ./gradlew build --stacktrace
+        # ホスト側のキャッシュディレクトリを準備し、~/.gradleの中身をコピー
+        # (Dockerマウント時の権限問題を回避するため、workspace内にマウントポイントを作る)
+        echo "--- Phase 1: Cache preparation ---"
+        CACHE_START=$(date +%s)
+        mkdir -p .gradle_cache_mount
+        if [ -d ~/.gradle ]; then
+          cp -r ~/.gradle/* .gradle_cache_mount/ || true
+        fi
+        CACHE_END=$(date +%s)
+        echo "Cache preparation time: $((CACHE_END - CACHE_START)) seconds"
+
+        # ビルド実行
+        echo "--- Phase 2: Docker Compose build ---"
+        DOCKER_START=$(date +%s)
+        set -o pipefail
+        docker compose run android-debug 2>&1 | tee build.log
+        DOCKER_END=$(date +%s)
+        echo "Docker Compose build time: $((DOCKER_END - DOCKER_START)) seconds"
+
+        # ビルド後のキャッシュを次回のために書き戻す
+        echo "--- Phase 3: Cache write-back ---"
+        WRITEBACK_START=$(date +%s)
+        mkdir -p ~/.gradle
+        cp -r .gradle_cache_mount/* ~/.gradle/ || true
+        WRITEBACK_END=$(date +%s)
+        echo "Cache write-back time: $((WRITEBACK_END - WRITEBACK_START)) seconds"
 
         BUILD_END=$(date +%s)
         echo "=== Build Time Measurement Summary ==="
         echo "Total build time: $((BUILD_END - BUILD_START)) seconds"
         echo "End time: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "=================================="
 
     # CMakeキャッシュの保存
     - name: Save CMake cache
