@@ -359,14 +359,14 @@ jobs:
 
 Claude has detected and fixed the build failure. The following changes have been committed:
 
-\`\`\`
+~~~
 ${claudeLog}
-\`\`\`
+~~~
 
 **Build Log (last 2000 chars):**
-\`\`\`
+~~~
 ${buildLog}
-\`\`\``;
+~~~`;
 
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
@@ -409,14 +409,14 @@ ${buildLog}
 Claude attempted to fix the build failure but could not resolve the issue.
 
 **Claude Analysis:**
-\`\`\`
+~~~
 ${claudeLog}
-\`\`\`
+~~~
 
 **Build Log (last 3000 chars):**
-\`\`\`
+~~~
 ${buildLog}
-\`\`\`
+~~~
 
 Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.`;
 
