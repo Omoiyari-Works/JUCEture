@@ -9,7 +9,110 @@ on:
       - develop
 
 jobs:
+  check-ci-minutes:
+    runs-on: ubuntu-latest
+    outputs:
+      use_circle_ci: ${{ steps.check_minutes.outputs.use_circle_ci }}
+      pipeline_id: ${{ steps.trigger_circle_ci.outputs.pipeline_id }}
+    permissions:
+      contents: read
+    steps:
+    - name: Check Remaining CI Minutes
+      id: check_minutes
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "=== Checking GitHub Billing API ==="
+        RESPONSE=$(gh api /organizations/Omoiyari-Works/settings/billing/usage/summary)
+        echo "API Response:"
+        echo "$RESPONSE" | jq '.'
+
+        # Extract grossQuantity for actions_linux
+        GROSS_QUANTITY=$(echo "$RESPONSE" | jq '.usageItems[] | select(.sku == "actions_linux") | .grossQuantity' | head -1)
+        echo ""
+        echo "=== CI Minutes Usage Analysis ==="
+        echo "Gross Quantity (actions_linux): $GROSS_QUANTITY minutes"
+
+        # Check if usage exceeds threshold (2000 - 120 = 1880)
+        THRESHOLD=1880
+        if (( $(echo "$GROSS_QUANTITY > $THRESHOLD" | bc -l) )); then
+          echo "WARNING: Usage exceeds threshold ($THRESHOLD minutes). Use CircleCI."
+          echo "use_circle_ci=true" >> $GITHUB_OUTPUT
+        else
+          echo "OK: Usage is within limits ($GROSS_QUANTITY / $THRESHOLD). GitHub Actions can be used."
+          echo "use_circle_ci=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Trigger CircleCI Pipeline
+      id: trigger_circle_ci
+      if: steps.check_minutes.outputs.use_circle_ci == 'true'
+      env:
+        CIRCLECI_TOKEN: ${{ secrets.CIRCLECI_TOKEN }}
+      run: |
+        echo "=== Triggering CircleCI Pipeline ==="
+        RESPONSE=$(curl -s -X POST \
+          -H "Circle-Token: $CIRCLECI_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"definition_id\":\"9ce26473-350b-44d2-a689-b067549707c5\",\"checkout\":{\"branch\":\"${{ github.head_ref }}\"},\"config\":{\"branch\":\"${{ github.head_ref }}\"}}" \
+          "https://circleci.com/api/v2/project/circleci/FKCv9WMvCE4KoXhRYVArsA/RLsT32n77orX1GhJSCTDmM/pipeline/run")
+
+        echo "CircleCI Response:"
+        echo "$RESPONSE" | jq '.'
+
+        PIPELINE_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+        if [ -z "$PIPELINE_ID" ]; then
+          echo "ERROR: Failed to trigger CircleCI pipeline"
+          exit 1
+        fi
+
+        echo "Pipeline triggered successfully. ID: $PIPELINE_ID"
+        echo "pipeline_id=$PIPELINE_ID" >> $GITHUB_OUTPUT
+
+    - name: Comment PR with CircleCI trigger
+      if: github.event_name == 'pull_request' && steps.check_minutes.outputs.use_circle_ci == 'true' && steps.trigger_circle_ci.outcome == 'success'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pipelineId = "${{ steps.trigger_circle_ci.outputs.pipeline_id }}";
+          const circleciUrl = `https://app.circleci.com/pipelines/github/Omoiyari-Works/JUCEture/${pipelineId}`;
+          const comment = `## ⚙️ Build Triggered on CircleCI
+
+          GitHub Actions CI minutes exceeded the threshold. Build has been triggered on CircleCI instead.
+
+          **Pipeline ID:** ${pipelineId}
+          **CircleCI:** [View Pipeline](${circleciUrl})`;
+
+          // 既存のコメントを検索して更新
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.data.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Android Build')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+
   build:
+    needs: check-ci-minutes
+    if: needs.check-ci-minutes.outputs.use_circle_ci == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
