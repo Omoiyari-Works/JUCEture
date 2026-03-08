@@ -22,7 +22,7 @@ jobs:
       uses: actions/create-github-app-token@v1
       with:
         app-id: ${{ secrets.APP_ID }}
-        private-key: ${{ secrets.APP_SECRET_KEY }}
+        private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
     - name: Check Remaining CI Minutes
       id: check_minutes
@@ -269,7 +269,7 @@ jobs:
       uses: actions/create-github-app-token@v1
       with:
         app-id: ${{ secrets.APP_ID }}
-        private-key: ${{ secrets.APP_SECRET_KEY }}
+        private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
     - name: Configure git push credentials
       if: failure() && steps.docker_build.outcome == 'failure'
