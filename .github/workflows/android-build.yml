@@ -355,18 +355,7 @@ jobs:
           const claudeLog = fs.readFileSync('claude-fix-output.log', 'utf8');
           const buildLog = fs.readFileSync('build.log', 'utf8').slice(-2000);
 
-          const comment = `## 🔧 Automatic Fix Applied
-
-Claude has detected and fixed the build failure. The following changes have been committed:
-
-~~~
-${claudeLog}
-~~~
-
-**Build Log (last 2000 chars):**
-~~~
-${buildLog}
-~~~`;
+          const comment = ['## 🔧 Automatic Fix Applied', '', 'Claude has detected and fixed the build failure. The following changes have been committed:', '', '~~~', claudeLog, '~~~', '', '**Build Log (last 2000 chars):**', '~~~', buildLog, '~~~'].join('\n');
 
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
@@ -404,21 +393,7 @@ ${buildLog}
           const claudeLog = fs.readFileSync('claude-fix-output.log', 'utf8');
           const buildLog = fs.readFileSync('build.log', 'utf8').slice(-3000);
 
-          const comment = `## ❌ Android Build Failed - Auto Fix Unsuccessful
-
-Claude attempted to fix the build failure but could not resolve the issue.
-
-**Claude Analysis:**
-~~~
-${claudeLog}
-~~~
-
-**Build Log (last 3000 chars):**
-~~~
-${buildLog}
-~~~
-
-Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.`;
+          const comment = ['## ❌ Android Build Failed - Auto Fix Unsuccessful', '', 'Claude attempted to fix the build failure but could not resolve the issue.', '', '**Claude Analysis:**', '~~~', claudeLog, '~~~', '', '**Build Log (last 3000 chars):**', '~~~', buildLog, '~~~', '', 'Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.'].join('\n');
 
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
