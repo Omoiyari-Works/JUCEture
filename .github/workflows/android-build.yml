@@ -17,10 +17,17 @@ jobs:
     permissions:
       contents: read
     steps:
+    - name: Generate GitHub App token
+      id: github-app-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.GITHUB_APP_ID }}
+        private-key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+
     - name: Check Remaining CI Minutes
       id: check_minutes
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ steps.github-app-token.outputs.token }}
       run: |
         echo "=== Checking GitHub Billing API ==="
         RESPONSE=$(gh api /organizations/Omoiyari-Works/settings/billing/usage/summary)
