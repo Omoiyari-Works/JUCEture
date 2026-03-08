@@ -235,6 +235,94 @@ jobs:
         echo "End time: $(date '+%Y-%m-%d %H:%M:%S')"
         echo "=================================="
 
+    # ================================================================
+    # ビルド失敗時の自動修正
+    # 以下のステップは直前のステップが失敗した場合のみ実行される
+    # ================================================================
+
+    - name: Setup Node.js for CI fix
+      if: failure() && steps.docker_build.outcome == 'failure'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Claude Code CLI
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: npm install -g @anthropic-ai/claude-code
+
+    - name: Configure git identity
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: |
+        git config user.name "Claude Agent"
+        git config user.email "claude@anthropic.com"
+
+    - name: Generate GitHub App token
+      if: failure() && steps.docker_build.outcome == 'failure'
+      id: github-app-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.GITHUB_APP_ID }}
+        private-key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+
+    - name: Configure git push credentials
+      if: failure() && steps.docker_build.outcome == 'failure'
+      env:
+        GITHUB_TOKEN: ${{ steps.github-app-token.outputs.token }}
+      run: |
+        git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+    - name: Log build context
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: |
+        echo "=== Build Context ==="
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Run ID: ${{ github.run_id }}"
+        echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+    - name: Fix CI failure with Claude
+      if: failure() && steps.docker_build.outcome == 'failure'
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      run: |
+        claude -p "GitHub Actionsで動作中。リポジトリへの書き込み権限あり。
+        # コンテキスト
+        - リポジトリ: ${{ github.repository }}
+        - ブランチ: ${{ github.ref_name }}
+        - ラン ID: ${{ github.run_id }}
+        - ラン URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # タスク
+        1. build.log を読み、ビルドエラーの原因を特定
+        2. CI失敗を解決する最小限の変更のみ実行。リポジトリのスタイルに従う
+        3. 修正後、変更は作業ツリーに残す(コミット/プッシュは後続ステップで実行)
+        4. 実行不可能な場合は変更しない
+        # 制約
+        - **ユーザーは回答することができないので、質問や承認要求を絶対にしてはいけません**。自律的に修正すること。
+        - 大事なことなのでもう一度。**質問や承認要求等のユーザーからの回答を求める行為は絶対に絶対にしてはいけません。**
+        - 修正内容と対応エラー(ビルドログ行番号)を出力
+        " --model haiku --output-format text --allowedTools "Edit"
+
+    - name: Check post-fix status
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: |
+        echo "=== Git Status ==="
+        git status
+        echo "=== Changed Files ==="
+        git diff --name-only || echo "No changes"
+        echo "=== Diff Summary ==="
+        git diff --stat || echo "No changes"
+
+    - name: Commit and push fix
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: |
+        git add .
+        if [[ -n $(git status -s) ]]; then
+          git commit -m "自動修正: CI失敗を修正"
+          git push -u origin "${{ github.ref_name }}"
+        else
+          echo "No changes to commit."
+        fi
+
     # CMakeキャッシュの保存
     - name: Save CMake cache
       if: always()
