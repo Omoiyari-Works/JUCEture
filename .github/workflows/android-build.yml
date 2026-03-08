@@ -133,6 +133,15 @@ jobs:
         fetch-depth: 0
         submodules: recursive
 
+    - name: Clone JUCE Framework
+      run: |
+        # Clone JUCE to parent directory of JUCEture
+        cd ${{ github.workspace }}/..
+        if [ ! -d "JUCE" ]; then
+          git clone https://github.com/juce-framework/JUCE.git
+        fi
+        ls -la JUCE
+
     # ソースファイルのタイムスタンプをGitコミット日時に復元
     # actions/checkoutはすべてのファイルを現在時刻のタイムスタンプで作成するため、
     # キャッシュされたオブジェクトファイルより新しくなり、Ninjaが全てを再コンパイルしてしまう。
