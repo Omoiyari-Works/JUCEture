@@ -233,7 +233,7 @@ jobs:
         echo "--- Phase 2: Docker Compose build ---"
         DOCKER_START=$(date +%s)
         set -o pipefail
-        docker compose run android-debug 2>&1 | tee build.log
+        docker compose run -v "${{ github.workspace }}/../JUCE:/workspace/JUCE" android-debug 2>&1 | tee build.log
         DOCKER_END=$(date +%s)
         echo "Docker Compose build time: $((DOCKER_END - DOCKER_START)) seconds"
 
