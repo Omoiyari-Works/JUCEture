@@ -8,11 +8,11 @@ services:
       USER_GID: ${USER_GID:-1001}
       # Enable verbose CMake/Ninja output for detailed build logs
       VERBOSE: 1
-    working_dir: /workspace/Builds/Android
+    working_dir: /workspace/sampleApp/android
     volumes:
       - .:/workspace
       # Override host local.properties with container-specific one to avoid path mismatch
-      - ./docker/android/local.properties.container:/workspace/Builds/Android/local.properties
+      - ./docker/android/local.properties.container:/workspace/sampleApp/android/local.properties
       # Gradle cache: local dev uses named volume, CI uses GRADLE_CACHE_PATH to mount host cache directory
       - ${GRADLE_CACHE_PATH:-gradle-cache}:/home/android/.gradle
     command: ./gradlew assembleDebug --profile --scan --configuration-cache --info
@@ -26,11 +26,11 @@ services:
       USER_GID: ${USER_GID:-1001}
       # Enable verbose CMake/Ninja output for detailed build logs
       VERBOSE: 1
-    working_dir: /workspace/Builds/Android
+    working_dir: /workspace/sampleApp/android
     volumes:
       - .:/workspace
       # Override host local.properties with container-specific one to avoid path mismatch
-      - ./docker/android/local.properties.container:/workspace/Builds/Android/local.properties
+      - ./docker/android/local.properties.container:/workspace/sampleApp/android/local.properties
       # Gradle cache: local dev uses named volume, CI uses GRADLE_CACHE_PATH to mount host cache directory
       - ${GRADLE_CACHE_PATH:-gradle-cache}:/home/android/.gradle
     command: ./gradlew assembleRelease --profile --scan --configuration-cache --info
