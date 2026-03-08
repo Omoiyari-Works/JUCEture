@@ -1,0 +1,3 @@
+# This file is mounted into the container to overwrite the host's local.properties.
+# This prevents the container from using the host's Windows SDK/NDK paths.
+# Inside the container, SDK/NDK locations are handled by environment variables defined in the Dockerfile.
