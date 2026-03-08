@@ -217,14 +217,72 @@ jobs:
             git config user.name "Claude Agent"
             git config user.email "claude@anthropic.com"
 
+      # GitHub App トークンを生成
+      # CircleCI シークレット: APP_ID, APP_PRIVATE_KEY が必要
+      - run:
+          name: Generate GitHub App token
+          when: on_fail
+          command: |
+            python3 -m pip install PyJWT requests -q
+            python3 << 'PYTHON_EOF'
+            import json
+            import time
+            import jwt
+            import requests
+            import os
+
+            # GitHub App 認証情報
+            app_id = os.environ['APP_ID']
+            private_key = os.environ['APP_PRIVATE_KEY']
+            installation_id = os.environ.get('GITHUB_APP_INSTALLATION_ID', '')
+
+            # JWT トークンを生成
+            now = int(time.time())
+            payload = {
+                'iat': now,
+                'exp': now + 600,  # 10分有効
+                'iss': app_id
+            }
+
+            jwt_token = jwt.encode(payload, private_key, algorithm='RS256')
+
+            # インストールトークンを取得
+            headers = {
+                'Authorization': f'Bearer {jwt_token}',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+
+            if installation_id:
+              # インストール ID が指定されている場合
+              url = f'https://api.github.com/app/installations/{installation_id}/access_tokens'
+            else:
+              # リポジトリから自動検出
+              owner = os.environ['CIRCLE_PROJECT_USERNAME']
+              repo = os.environ['CIRCLE_PROJECT_REPONAME']
+              url = f'https://api.github.com/repos/{owner}/{repo}/installation/access_tokens'
+
+            response = requests.post(url, headers=headers)
+            if response.status_code != 201:
+              print(f"Error: {response.status_code} - {response.text}")
+              exit(1)
+
+            token = response.json()['token']
+
+            # トークンを環境ファイルに保存
+            with open('/tmp/github_token', 'w') as f:
+              f.write(token)
+
+            print("✓ GitHub App token generated successfully")
+            PYTHON_EOF
+
       # git push 用の HTTPS 認証を設定
-      # CircleCI プロジェクト設定に GH_PAT (repo スコープの GitHub PAT) が必要
       - run:
           name: Configure git push credentials
           when: on_fail
           command: |
+            GITHUB_TOKEN=$(cat /tmp/github_token)
             git remote set-url origin \
-              "https://x-access-token:${GH_PAT}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git"
+              "https://x-access-token:${GITHUB_TOKEN}@github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git"
 
       # ビルドコンテキストをログ出力
       - run:
