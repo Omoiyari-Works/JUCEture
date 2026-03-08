@@ -353,7 +353,7 @@ jobs:
         script: |
           const fs = require('fs');
           const claudeLog = fs.readFileSync('claude-fix-output.log', 'utf8');
-          const buildLog = fs.readFileSync('build.log', 'utf8').slice(-2000); // 最後の2000文字
+          const buildLog = fs.readFileSync('build.log', 'utf8').slice(-2000);
 
           const comment = `## 🔧 Automatic Fix Applied
 
@@ -402,7 +402,7 @@ ${buildLog}
         script: |
           const fs = require('fs');
           const claudeLog = fs.readFileSync('claude-fix-output.log', 'utf8');
-          const buildLog = fs.readFileSync('build.log', 'utf8').slice(-3000); // 最後の3000文字
+          const buildLog = fs.readFileSync('build.log', 'utf8').slice(-3000);
 
           const comment = `## ❌ Android Build Failed - Auto Fix Unsuccessful
 
