@@ -78,6 +78,11 @@ class GestureTestBox : public juce::Component,
     bool hasLastScale = false;
     juce::Point<float> lastScale_focus{0.0f, 0.0f};
     float lastScale_step = 0.0f;
+    float lastScale_stepX = 0.0f;
+    float lastScale_stepY = 0.0f;
+    float lastScale_total = 1.0f;
+    float lastScale_totalX = 1.0f;
+    float lastScale_totalY = 1.0f;
 
     bool hasLastScaleEnd = false;
     juce::Point<float> lastScaleEnd_focus{0.0f, 0.0f};

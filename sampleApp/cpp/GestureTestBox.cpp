@@ -89,7 +89,12 @@ void GestureTestBox::setStatusText(const juce::String& text)
         parts << " \nScale=";
         if (hasLastScale)
             parts << "focus=" << fmtPt(lastScale_focus)
-                  << " step=" << juce::String(lastScale_step, 3);
+                  << " step=" << juce::String(lastScale_step, 3)
+                  << " (X=" << juce::String(lastScale_stepX, 3)
+                  << " Y=" << juce::String(lastScale_stepY, 3) << ")"
+                  << " total=" << juce::String(lastScale_total, 3)
+                  << " (X=" << juce::String(lastScale_totalX, 3)
+                  << " Y=" << juce::String(lastScale_totalY, 3) << ")";
         else
             parts << "-";
 
@@ -173,7 +178,12 @@ void GestureTestBox::onPinchScale(const PinchScaleEvent& event)
 
     hasLastScale = true;
     lastScale_focus = focusLocal;
-    lastScale_step = scaleFactorStep;
+    lastScale_step = event.getScaleFactorStep();
+    lastScale_stepX = event.getScaleFactorStepX();
+    lastScale_stepY = event.getScaleFactorStepY();
+    lastScale_total = event.getScaleFactorTotal();
+    lastScale_totalX = event.getScaleFactorTotalX();
+    lastScale_totalY = event.getScaleFactorTotalY();
     setStatusText(juce::String());
 }
 
