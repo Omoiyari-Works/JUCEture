@@ -117,6 +117,8 @@ public final class NotifierGestureFromAndroid {
         private float lastRawFocusX = 0f;
         private float lastRawFocusY = 0f;
         private float lastPinchSpan = 0f;
+        private float lastPinchSpanX = 0f;
+        private float lastPinchSpanY = 0f;
         private boolean lastSingleTapHandled = false;
 
         OnTouchWrapper(Context context) {
@@ -218,6 +220,24 @@ public final class NotifierGestureFromAndroid {
         }
 
         /**
+         * Calculate the X-axis distance between the first two pointers.
+         * Returns 0 if fewer than two pointers are present.
+         */
+        private float calculateSpanX(MotionEvent e) {
+            if (e.getPointerCount() < 2) return 0f;
+            return Math.abs(e.getRawX(0) - e.getRawX(1));
+        }
+
+        /**
+         * Calculate the Y-axis distance between the first two pointers.
+         * Returns 0 if fewer than two pointers are present.
+         */
+        private float calculateSpanY(MotionEvent e) {
+            if (e.getPointerCount() < 2) return 0f;
+            return Math.abs(e.getRawY(0) - e.getRawY(1));
+        }
+
+        /**
          * Calculate the midpoint (focus) between the first two pointers.
          * Returns the first pointer position if fewer than two pointers are present.
          */
@@ -253,6 +273,8 @@ public final class NotifierGestureFromAndroid {
                             terminateDragDueToPinch();
                             pinching = true;
                             lastPinchSpan = calculateSpan(event);
+                            lastPinchSpanX = calculateSpanX(event);
+                            lastPinchSpanY = calculateSpanY(event);
                             final float[] startFocus = calculateFocus(event);
                             lastRawFocusX = startFocus[0];
                             lastRawFocusY = startFocus[1];
@@ -264,15 +286,21 @@ public final class NotifierGestureFromAndroid {
                     case MotionEvent.ACTION_MOVE:
                         if (pinching && pointerCount >= MIN_POINTER_COUNT_FOR_PINCH) {
                             final float newSpan = calculateSpan(event);
+                            final float newSpanX = calculateSpanX(event);
+                            final float newSpanY = calculateSpanY(event);
                             // Scale factor relative to the previous frame.
                             // Guard against division by zero when fingers are at the same point.
                             final float scaleFactor = (lastPinchSpan > 1f) ? newSpan / lastPinchSpan : 1.0f;
+                            final float scaleFactorX = (lastPinchSpanX > 1f) ? newSpanX / lastPinchSpanX : 1.0f;
+                            final float scaleFactorY = (lastPinchSpanY > 1f) ? newSpanY / lastPinchSpanY : 1.0f;
                             lastPinchSpan = newSpan;
+                            lastPinchSpanX = newSpanX;
+                            lastPinchSpanY = newSpanY;
                             final float[] moveFocus = calculateFocus(event);
                             lastRawFocusX = moveFocus[0];
                             lastRawFocusY = moveFocus[1];
                             onPinchScale(lastRawFocusX, lastRawFocusY,
-                                    scaleFactor, scaleFactor, scaleFactor, density, nativePtr);
+                                    scaleFactor, scaleFactorX, scaleFactorY, density, nativePtr);
                         }
                         break;
 
@@ -290,6 +318,8 @@ public final class NotifierGestureFromAndroid {
                                     1.0f, 1.0f, 1.0f, density, nativePtr);
                             pinching = false;
                             lastPinchSpan = 0f;
+                            lastPinchSpanX = 0f;
+                            lastPinchSpanY = 0f;
                         }
                         break;
 
@@ -300,6 +330,8 @@ public final class NotifierGestureFromAndroid {
                                     1.0f, 1.0f, 1.0f, density, nativePtr);
                             pinching = false;
                             lastPinchSpan = 0f;
+                            lastPinchSpanX = 0f;
+                            lastPinchSpanY = 0f;
                         }
                         break;
 
