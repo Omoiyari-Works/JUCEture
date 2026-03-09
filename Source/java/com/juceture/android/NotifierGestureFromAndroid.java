@@ -291,8 +291,20 @@ public final class NotifierGestureFromAndroid {
                             // Scale factor relative to the previous frame.
                             // Guard against division by zero when fingers are at the same point.
                             final float scaleFactor = (lastPinchSpan > 1f) ? newSpan / lastPinchSpan : 1.0f;
-                            final float scaleFactorX = (lastPinchSpanX > 1f) ? newSpanX / lastPinchSpanX : 1.0f;
-                            final float scaleFactorY = (lastPinchSpanY > 1f) ? newSpanY / lastPinchSpanY : 1.0f;
+                            final float rawScaleFactorX = (lastPinchSpanX > 1f) ? newSpanX / lastPinchSpanX : 1.0f;
+                            final float rawScaleFactorY = (lastPinchSpanY > 1f) ? newSpanY / lastPinchSpanY : 1.0f;
+                            // Suppress axis-specific scale when the pinch direction is perpendicular
+                            // to that axis. ratioX = spanX/span = |cos(angle)|, which is near 0 for
+                            // a vertical pinch and near 1 for a horizontal pinch (and vice versa for Y).
+                            // Squaring the ratio makes the suppression stronger near the perpendicular
+                            // direction while keeping the transition smooth and continuous.
+                            // When span=0, both weights are 0, so scaleFactorX/Y stay at 1.0.
+                            final float ratioX = (newSpan > 1f) ? Math.min(newSpanX / newSpan, 1.0f) : 0f;
+                            final float ratioY = (newSpan > 1f) ? Math.min(newSpanY / newSpan, 1.0f) : 0f;
+                            final float weightX = ratioX * ratioX;
+                            final float weightY = ratioY * ratioY;
+                            final float scaleFactorX = 1.0f + (rawScaleFactorX - 1.0f) * weightX;
+                            final float scaleFactorY = 1.0f + (rawScaleFactorY - 1.0f) * weightY;
                             lastPinchSpan = newSpan;
                             lastPinchSpanX = newSpanX;
                             lastPinchSpanY = newSpanY;
