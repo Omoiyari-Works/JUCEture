@@ -88,11 +88,11 @@ void GestureTestBox::setStatusText(const juce::String& text)
 
         parts << " \nScale=";
         if (hasLastScale)
-            parts << "focus=" << fmtPt(lastScale_focus)
-                  << " step=" << juce::String(lastScale_step, 3)
+            parts << "focus=" << fmtPt(lastScale_focus) << " \n"
+                  << "  step=" << juce::String(lastScale_step, 3)
                   << " (X=" << juce::String(lastScale_stepX, 3)
-                  << " Y=" << juce::String(lastScale_stepY, 3) << ")"
-                  << " total=" << juce::String(lastScale_total, 3)
+                  << " Y=" << juce::String(lastScale_stepY, 3) << ") \n"
+                  << "  total=" << juce::String(lastScale_total, 3)
                   << " (X=" << juce::String(lastScale_totalX, 3)
                   << " Y=" << juce::String(lastScale_totalY, 3) << ")";
         else
