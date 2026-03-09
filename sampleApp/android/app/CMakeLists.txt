@@ -16,7 +16,7 @@ add_definitions([[-DJUCE_ANDROID=1]] [[-DJUCE_ANDROID_API_VERSION=24]] [[-DJUCE_
 
 include_directories( AFTER
     "../../../JuceLibraryCode"
-    "/workspace/JUCE/modules"
+    "../../../../JUCE/modules"
     "${ANDROID_NDK}/sources/android/cpufeatures"
     "../../../Source"
     "../../../sampleApp/cpp"
