@@ -22,8 +22,8 @@ include_directories( AFTER
     "../../../sampleApp/cpp"
 )
 
-include_directories("../../../external/perfetto/sdk")
-add_library(perfetto STATIC ../../../external/perfetto/sdk/perfetto.cc)
+# include_directories("../../../external/perfetto/sdk")
+# add_library(perfetto STATIC ../../../external/perfetto/sdk/perfetto.cc)
 
 # Sourceディレクトリをサブディレクトリとして追加
 add_subdirectory(../../../Source/cpp Source)

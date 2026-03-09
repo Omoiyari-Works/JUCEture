@@ -1,0 +1,544 @@
+name: Android Build
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  check-ci-minutes:
+    runs-on: ubuntu-latest
+    outputs:
+      use_circle_ci: ${{ steps.check_minutes.outputs.use_circle_ci }}
+      pipeline_id: ${{ steps.trigger_circle_ci.outputs.pipeline_id }}
+    permissions:
+      contents: read
+    steps:
+    - name: Generate GitHub App token
+      id: github-app-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.APP_ID }}
+        private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+    - name: Check Remaining CI Minutes
+      id: check_minutes
+      env:
+        GH_TOKEN: ${{ steps.github-app-token.outputs.token }}
+      run: |
+        echo "=== Checking GitHub Billing API ==="
+        RESPONSE=$(gh api /organizations/Omoiyari-Works/settings/billing/usage/summary)
+        echo "API Response:"
+        echo "$RESPONSE" | jq '.'
+
+        # Extract grossQuantity for actions_linux
+        GROSS_QUANTITY=$(echo "$RESPONSE" | jq '.usageItems[] | select(.sku == "actions_linux") | .grossQuantity' | head -1)
+        echo ""
+        echo "=== CI Minutes Usage Analysis ==="
+        echo "Gross Quantity (actions_linux): $GROSS_QUANTITY minutes"
+
+        # Check if usage exceeds threshold (2000 - 120 = 1880)
+        THRESHOLD=1880
+        if (( $(echo "$GROSS_QUANTITY > $THRESHOLD" | bc -l) )); then
+          echo "WARNING: Usage exceeds threshold ($THRESHOLD minutes). Use CircleCI."
+          echo "use_circle_ci=true" >> $GITHUB_OUTPUT
+        else
+          echo "OK: Usage is within limits ($GROSS_QUANTITY / $THRESHOLD). GitHub Actions can be used."
+          echo "use_circle_ci=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Trigger CircleCI Pipeline
+      id: trigger_circle_ci
+      if: steps.check_minutes.outputs.use_circle_ci == 'true'
+      env:
+        CIRCLECI_TOKEN: ${{ secrets.CIRCLECI_TOKEN }}
+      run: |
+        echo "=== Triggering CircleCI Pipeline ==="
+        RESPONSE=$(curl -s -X POST \
+          -H "Circle-Token: $CIRCLECI_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"definition_id\":\"9ce26473-350b-44d2-a689-b067549707c5\",\"checkout\":{\"branch\":\"${{ github.head_ref }}\"},\"config\":{\"branch\":\"${{ github.head_ref }}\"}}" \
+          "https://circleci.com/api/v2/project/circleci/FKCv9WMvCE4KoXhRYVArsA/RLsT32n77orX1GhJSCTDmM/pipeline/run")
+
+        echo "CircleCI Response:"
+        echo "$RESPONSE" | jq '.'
+
+        PIPELINE_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+        if [ -z "$PIPELINE_ID" ]; then
+          echo "ERROR: Failed to trigger CircleCI pipeline"
+          exit 1
+        fi
+
+        echo "Pipeline triggered successfully. ID: $PIPELINE_ID"
+        echo "pipeline_id=$PIPELINE_ID" >> $GITHUB_OUTPUT
+
+    - name: Comment PR with CircleCI trigger
+      if: github.event_name == 'pull_request' && steps.check_minutes.outputs.use_circle_ci == 'true' && steps.trigger_circle_ci.outcome == 'success'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pipelineId = "${{ steps.trigger_circle_ci.outputs.pipeline_id }}";
+          const circleciUrl = `https://app.circleci.com/pipelines/github/Omoiyari-Works/JUCEture/${pipelineId}`;
+          const comment = `## ⚙️ Build Triggered on CircleCI
+
+          GitHub Actions CI minutes exceeded the threshold. Build has been triggered on CircleCI instead.
+
+          **Pipeline ID:** ${pipelineId}
+          **CircleCI:** [View Pipeline](${circleciUrl})`;
+
+          // 既存のコメントを検索して更新
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.data.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Android Build')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+
+  build:
+    needs: check-ci-minutes
+    if: needs.check-ci-minutes.outputs.use_circle_ci == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Clone JUCE Framework
+      run: |
+        # Clone JUCE to parent directory of JUCEture
+        cd ${{ github.workspace }}/..
+        if [ ! -d "JUCE" ]; then
+          git clone https://github.com/juce-framework/JUCE.git
+        fi
+        ls -la JUCE
+
+    # ソースファイルのタイムスタンプをGitコミット日時に復元
+    # actions/checkoutはすべてのファイルを現在時刻のタイムスタンプで作成するため、
+    # キャッシュされたオブジェクトファイルより新しくなり、Ninjaが全てを再コンパイルしてしまう。
+    # Gitの履歴から各ファイルの最終コミット日時を取得し、タイムスタンプを設定することで、
+    # キャッシュが有効に機能するようにする。
+    - name: Install git-restore-mtime
+      run: |
+        curl -sSL https://raw.githubusercontent.com/MestreLion/git-tools/main/git-restore-mtime -o /tmp/git-restore-mtime
+        chmod +x /tmp/git-restore-mtime
+        sudo mv /tmp/git-restore-mtime /usr/local/bin/git-restore-mtime
+
+    - name: Restore timestamps for main repository and submodules
+      run: |
+        echo "Restoring file timestamps from git history..."
+        RESTORE_START=$(date +%s)
+
+        # Main repository
+        echo "Restoring main repository timestamps..."
+        git-restore-mtime
+
+        # Submodules (JUCE, JUCEture, etc.)
+        echo "Restoring submodule timestamps..."
+        git submodule foreach --recursive 'git-restore-mtime' > /dev/null 2>&1 || true
+
+        RESTORE_END=$(date +%s)
+        echo "Timestamp restoration completed in $((RESTORE_END - RESTORE_START)) seconds"
+
+    # Gradleのキャッシュ設定
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('sampleApp/android/**/*.gradle*', 'sampleApp/android/**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    # CMakeビルドのキャッシュ設定（復元）
+    - name: Restore CMake cache
+      id: cmake-cache-restore
+      uses: actions/cache/restore@v3
+      with:
+        path: |
+          sampleApp/android/app/.cxx
+        key: ${{ runner.os }}-cmake-${{ hashFiles('sampleApp/android/**/CMakeLists.txt', 'Source/**/*.cpp', 'Source/**/*.h') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+
+    # ディスク容量を確保
+    - name: Free Disk Space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+
+    - name: Build with Docker Compose
+      id: docker_build
+      continue-on-error: true
+      env:
+        GRADLE_CACHE_PATH: ${{ github.workspace }}/.gradle_cache_mount
+      run: |
+        echo "=== Build Time Measurement Started ==="
+        echo "Start time: $(date '+%Y-%m-%d %H:%M:%S')"
+        BUILD_START=$(date +%s)
+
+        # ホスト側のキャッシュディレクトリを準備し、~/.gradleの中身をコピー
+        # (Dockerマウント時の権限問題を回避するため、workspace内にマウントポイントを作る)
+        echo "--- Phase 1: Cache preparation ---"
+        CACHE_START=$(date +%s)
+        mkdir -p .gradle_cache_mount
+        if [ -d ~/.gradle ]; then
+          cp -r ~/.gradle/* .gradle_cache_mount/ || true
+        fi
+        CACHE_END=$(date +%s)
+        echo "Cache preparation time: $((CACHE_END - CACHE_START)) seconds"
+
+        # ビルド実行
+        echo "--- Phase 2: Docker Compose build ---"
+        DOCKER_START=$(date +%s)
+        set -o pipefail
+        docker compose run -v "${{ github.workspace }}/../JUCE:/workspace/../JUCE" android-debug 2>&1 | tee build.log
+        DOCKER_END=$(date +%s)
+        echo "Docker Compose build time: $((DOCKER_END - DOCKER_START)) seconds"
+
+        # ビルド後のキャッシュを次回のために書き戻す
+        echo "--- Phase 3: Cache write-back ---"
+        WRITEBACK_START=$(date +%s)
+        mkdir -p ~/.gradle
+        cp -r .gradle_cache_mount/* ~/.gradle/ || true
+        WRITEBACK_END=$(date +%s)
+        echo "Cache write-back time: $((WRITEBACK_END - WRITEBACK_START)) seconds"
+
+        BUILD_END=$(date +%s)
+        echo "=== Build Time Measurement Summary ==="
+        echo "Total build time: $((BUILD_END - BUILD_START)) seconds"
+        echo "End time: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "=================================="
+
+    # ================================================================
+    # ビルド失敗時の自動修正
+    # 以下のステップは直前のステップが失敗した場合のみ実行される
+    # ================================================================
+
+    - name: Setup Node.js for CI fix
+      if: failure() && steps.docker_build.outcome == 'failure'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Claude Code CLI
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: npm install -g @anthropic-ai/claude-code
+
+    - name: Configure git identity
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: |
+        git config user.name "Claude Agent"
+        git config user.email "claude@anthropic.com"
+
+    - name: Generate GitHub App token
+      if: failure() && steps.docker_build.outcome == 'failure'
+      id: github-app-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.APP_ID }}
+        private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+    - name: Configure git push credentials
+      if: failure() && steps.docker_build.outcome == 'failure'
+      env:
+        GITHUB_TOKEN: ${{ steps.github-app-token.outputs.token }}
+      run: |
+        git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+    - name: Log build context
+      if: failure() && steps.docker_build.outcome == 'failure'
+      run: |
+        echo "=== Build Context ==="
+        echo "Repository: ${{ github.repository }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Run ID: ${{ github.run_id }}"
+        echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+    - name: Fix CI failure with Claude
+      if: failure() && steps.docker_build.outcome == 'failure'
+      id: claude-fix
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      run: |
+        claude -p "GitHub Actionsで動作中。リポジトリへの書き込み権限あり。
+        # コンテキスト
+        - リポジトリ: ${{ github.repository }}
+        - ブランチ: ${{ github.ref_name }}
+        - ラン ID: ${{ github.run_id }}
+        - ラン URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # タスク
+        1. build.log を読み、ビルドエラーの原因を特定
+        2. CI失敗を解決する最小限の変更のみ実行。リポジトリのスタイルに従う
+        3. 修正後、変更は作業ツリーに残す(コミット/プッシュは後続ステップで実行)
+        4. 実行不可能な場合は変更しない
+        # 制約
+        - **ユーザーは回答することができないので、質問や承認要求を絶対にしてはいけません**。自律的に修正すること。
+        - 大事なことなのでもう一度。**質問や承認要求等のユーザーからの回答を求める行為は絶対に絶対にしてはいけません。**
+        - 修正内容と対応エラー(ビルドログ行番号)を出力
+        " --model haiku --output-format text --allowedTools "Edit" > claude-fix-output.log 2>&1 || true
+
+        # 出力をコンソールにも表示
+        cat claude-fix-output.log
+
+    - name: Check post-fix status
+      if: failure() && steps.docker_build.outcome == 'failure'
+      id: check-fix-result
+      run: |
+        echo "=== Git Status ==="
+        git status
+        echo "=== Changed Files ==="
+        git diff --name-only || echo "No changes"
+        echo "=== Diff Summary ==="
+        git diff --stat || echo "No changes"
+
+        # 変更があるかをチェック
+        if [[ -n $(git status -s) ]]; then
+          echo "fix_attempted=true" >> $GITHUB_OUTPUT
+        else
+          echo "fix_attempted=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Commit and push fix
+      if: failure() && steps.docker_build.outcome == 'failure'
+      id: push-fix
+      continue-on-error: true
+      run: |
+        git add .
+        if [[ -n $(git status -s) ]]; then
+          git commit -m "自動修正: CI失敗を修正"
+          git push -u origin "${{ github.ref_name }}"
+          echo "push_success=true" >> $GITHUB_OUTPUT
+        else
+          echo "No changes to commit."
+          echo "push_success=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Comment PR with fix result (success)
+      if: github.event_name == 'pull_request' && failure() && steps.docker_build.outcome == 'failure' && steps.check-fix-result.outputs.fix_attempted == 'true' && steps.push-fix.outputs.push_success == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const claudeLog = fs.readFileSync('claude-fix-output.log', 'utf8');
+          const buildLog = fs.readFileSync('build.log', 'utf8').slice(-2000);
+
+          const comment = ['## 🔧 Automatic Fix Applied', '', 'Claude has detected and fixed the build failure. The following changes have been committed:', '', '~~~', claudeLog, '~~~', '', '**Build Log (last 2000 chars):**', '~~~', buildLog, '~~~'].join('\n');
+
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.data.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Android Build')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+
+    - name: Comment PR with fix failure
+      if: github.event_name == 'pull_request' && failure() && steps.docker_build.outcome == 'failure' && steps.check-fix-result.outputs.fix_attempted == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const claudeLog = fs.readFileSync('claude-fix-output.log', 'utf8');
+          const buildLog = fs.readFileSync('build.log', 'utf8').slice(-3000);
+
+          const comment = ['## ❌ Android Build Failed - Auto Fix Unsuccessful', '', 'Claude attempted to fix the build failure but could not resolve the issue.', '', '**Claude Analysis:**', '~~~', claudeLog, '~~~', '', '**Build Log (last 3000 chars):**', '~~~', buildLog, '~~~', '', 'Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.'].join('\n');
+
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.data.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Android Build')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+
+    # CMakeキャッシュの保存
+    - name: Save CMake cache
+      if: always()
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          sampleApp/android/app/.cxx
+        key: ${{ runner.os }}-cmake-${{ hashFiles('sampleApp/android/**/CMakeLists.txt', 'Source/**/*.cpp', 'Source/**/*.h') }}
+
+    # ビルドレポートをアップロード
+    - name: Upload build reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-reports
+        path: |
+          sampleApp/android/app/build/reports
+        retention-days: 7
+        if-no-files-found: warn
+
+    # APKアーティファクトをアップロード
+    - name: Upload APK artifact
+      id: upload-apk
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: app-apk
+        path: sampleApp/android/app/build/outputs/apk/**/*.apk
+        retention-days: 7
+
+    # プルリクエストにコメントを追加（成功時）
+    - name: Comment PR with build result
+      if: github.event_name == 'pull_request' && success()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const runUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+          const artifactUrl = `${{ steps.upload-apk.outputs.artifact-url }}`;
+          const comment = `## ✅ Android Build Successful
+
+          Build completed successfully!
+
+          **Artifacts:** [Download APK](${artifactUrl})
+          **Workflow run:** [View](${runUrl})`;
+
+          // 既存のコメントを検索して更新
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.data.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Android Build')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+
+    # プルリクエストにコメントを追加（失敗時）
+    - name: Comment PR with build failure
+      if: github.event_name == 'pull_request' && failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const runUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+          const comment = `## ❌ Android Build Failed
+
+          The build failed. Please check the [workflow logs](${runUrl}) for details.`;
+
+          // 既存のコメントを検索して更新
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const botComment = comments.data.find(comment =>
+            comment.user.type === 'Bot' &&
+            comment.body.includes('Android Build')
+          );
+
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
