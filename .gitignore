@@ -4,3 +4,4 @@ build/
 debug
 release
 Builds/Android/local.properties
+juce.properties
