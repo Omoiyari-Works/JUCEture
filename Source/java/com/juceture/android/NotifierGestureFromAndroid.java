@@ -120,6 +120,7 @@ public final class NotifierGestureFromAndroid {
         private float lastPinchSpanX = 0f;
         private float lastPinchSpanY = 0f;
         private boolean lastSingleTapHandled = false;
+        private boolean postPinch = false;
 
         OnTouchWrapper(Context context) {
             this.context = context;
@@ -170,8 +171,8 @@ public final class NotifierGestureFromAndroid {
                         @Override
                         public boolean onScroll(MotionEvent dragStartPoint, MotionEvent dragCurrentPoint,
                                 float distanceX, float distanceY) {
-                            if (pinching) {
-                                // Suppress drag notifications while in a pinch
+                            if (pinching || postPinch) {
+                                // Suppress drag notifications while in a pinch or immediately after a pinch ends
                                 return true;
                             }
                             final float density = context.getResources().getDisplayMetrics().density;
@@ -259,6 +260,7 @@ public final class NotifierGestureFromAndroid {
 
             if (action == MotionEvent.ACTION_DOWN) {
                 lastSingleTapHandled = false; // Reset for new touch sequence
+                postPinch = false;            // Reset post-pinch drag suppression for new touch sequence
             }
 
             // --- Custom pinch tracking (replaces ScaleGestureDetector) ---
@@ -329,6 +331,7 @@ public final class NotifierGestureFromAndroid {
                             onPinchEnd(endFocusX, endFocusY,
                                     1.0f, 1.0f, 1.0f, density, nativePtr);
                             pinching = false;
+                            postPinch = true; // Suppress drag until next ACTION_DOWN
                             lastPinchSpan = 0f;
                             lastPinchSpanX = 0f;
                             lastPinchSpanY = 0f;
