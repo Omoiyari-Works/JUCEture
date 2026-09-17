@@ -6,7 +6,8 @@
   ==============================================================================
 */
 
-#include <JuceHeader.h>
+#include <juceture/juceture.h>
+#include <juce_gui_extra/juce_gui_extra.h>
 #include "MainComponent.h"
 
 #if JUCE_ANDROID
