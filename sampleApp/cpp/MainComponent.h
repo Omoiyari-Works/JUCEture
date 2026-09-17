@@ -1,10 +1,9 @@
 #pragma once
 
-#include <JuceHeader.h>
+#include <juceture/juceture.h>
+#include <juce_gui_extra/juce_gui_extra.h>
+#include <juce_opengl/juce_opengl.h>
 #include "GestureTestBox.h"
-#include "ISingleTapHandler.h"
-#include "IDragHandler.h"
-#include "IPinchHandler.h"
 
 //==============================================================================
 /*

@@ -1,11 +1,7 @@
 #pragma once
 
-#include <JuceHeader.h>
+#include <juceture/juceture.h>
 #include <functional>
-
-#include "ISingleTapHandler.h"
-#include "IDragHandler.h"
-#include "IPinchHandler.h"
 
 class GestureTestBox : public juce::Component,
                        public ISingleTapHandler,

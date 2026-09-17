@@ -1,0 +1,27 @@
+#pragma once
+
+#include <juce_gui_basics/juce_gui_basics.h>
+
+class CoordinateConverter
+{
+  public:
+    // Convert from raw coordinates (physical coordinates) to logical global coordinates
+    static bool rawToLogicalGlobal(float rawX, float rawY,
+                                   juce::Point<float>& outLogicalGlobal);
+
+    // Convert from raw coordinates to local coordinates of specified component
+    static bool rawToComponentLocal(juce::Component& component, float rawX,
+                                    float rawY, juce::Point<float>& outLocal);
+
+    // Get both logical global coordinates and local coordinates of specified component from raw coordinates
+    static bool rawToComponentLocalAndGlobal(juce::Component& component,
+                                             float rawX, float rawY,
+                                             juce::Point<float>& outLocal,
+                                             juce::Point<float>& outGlobal);
+
+    // Convert logical coordinates to physical coordinates (for vectors/deltas)
+    static juce::Point<float> logicalToPhysical(const juce::Point<float>& logical);
+
+    // Convert physical coordinates to logical coordinates (for vectors/deltas)
+    static juce::Point<float> physicalToLogical(const juce::Point<float>& physical);
+};

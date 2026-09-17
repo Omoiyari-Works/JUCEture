@@ -1,15 +1,7 @@
-#include <JuceHeader.h>
+#include "GestureTestBox.h"
 #if JUCE_ANDROID
 #include <android/log.h>
 #endif
-#include "GestureTestBox.h"
-#include "PinchStartEvent.h"
-#include "PinchScaleEvent.h"
-#include "PinchEndEvent.h"
-#include "SingleTapEvent.h"
-#include "DragStartEvent.h"
-#include "DragMoveEvent.h"
-#include "DragEndEvent.h"
 
 namespace
 {

@@ -6,7 +6,8 @@
   ==============================================================================
 */
 
-#include <JuceHeader.h>
+#include <juceture/juceture.h>
+#include <juce_gui_extra/juce_gui_extra.h>
 #include "MainComponent.h"
 
 #if JUCE_ANDROID
@@ -30,11 +31,11 @@ class AndroidGUISampleProjectApplication : public juce::JUCEApplication
 
     const juce::String getApplicationName() override
     {
-        return ProjectInfo::projectName;
+        return "JUCEtureTestApp";
     }
     const juce::String getApplicationVersion() override
     {
-        return ProjectInfo::versionString;
+        return "1.0.4";
     }
     bool moreThanOneInstanceAllowed() override
     {
