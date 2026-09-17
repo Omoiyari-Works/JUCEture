@@ -1,12 +1,5 @@
 #include "MainComponent.h"
 #include <juceture/juceture.h>
-#include "SingleTapEvent.h"
-#include "DragStartEvent.h"
-#include "DragMoveEvent.h"
-#include "DragEndEvent.h"
-#include "PinchStartEvent.h"
-#include "PinchScaleEvent.h"
-#include "PinchEndEvent.h"
 
 #if JUCE_ANDROID
 #include <android/log.h>

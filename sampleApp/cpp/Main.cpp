@@ -31,11 +31,11 @@ class AndroidGUISampleProjectApplication : public juce::JUCEApplication
 
     const juce::String getApplicationName() override
     {
-        return ProjectInfo::projectName;
+        return "JUCEtureTestApp";
     }
     const juce::String getApplicationVersion() override
     {
-        return ProjectInfo::versionString;
+        return "1.0.4";
     }
     bool moreThanOneInstanceAllowed() override
     {
