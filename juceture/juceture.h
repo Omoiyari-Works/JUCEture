@@ -18,6 +18,10 @@
 #pragma once
 #define JUCETURE_H_INCLUDED
 
+#ifndef JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED
+ #define JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED 1
+#endif
+
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 #include <juce_graphics/juce_graphics.h>

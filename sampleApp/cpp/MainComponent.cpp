@@ -1,5 +1,5 @@
 #include "MainComponent.h"
-#include "JUCEtureAPI.h"
+#include <juceture/juceture.h>
 #include "SingleTapEvent.h"
 #include "DragStartEvent.h"
 #include "DragMoveEvent.h"

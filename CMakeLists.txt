@@ -22,6 +22,12 @@ target_include_directories(juceture PUBLIC
 target_compile_definitions(juceture PRIVATE
     JUCE_ANDROID=1
     JUCE_ANDROID_API_VERSION=24
+    JUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
+    JUCE_MODULE_AVAILABLE_juce_core=1
+    JUCE_MODULE_AVAILABLE_juce_data_structures=1
+    JUCE_MODULE_AVAILABLE_juce_events=1
+    JUCE_MODULE_AVAILABLE_juce_graphics=1
+    JUCE_MODULE_AVAILABLE_juce_gui_basics=1
     $<$<CONFIG:Debug>:DEBUG=1>
     $<$<CONFIG:Debug>:_DEBUG=1>
     $<$<CONFIG:Release>:NDEBUG=1>

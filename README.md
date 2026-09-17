@@ -257,7 +257,7 @@ add_subdirectory(../../../Source/cpp Source)
 Call `JUCEtureAPI::initialize()` in your application initialization code. It is recommended to call this from a component that remains active throughout the application lifecycle, such as `MainComponent`:
 
 ```cpp
-#include "JUCEtureAPI.h"
+#include <juceture/juceture.h>
 
 // In MainComponent constructor or similar long-lived component
 MainComponent::MainComponent()

@@ -1,4 +1,4 @@
-#include "JUCEtureAPI.h"
+#include <juceture/juceture.h>
 #if JUCE_ANDROID
 #include "NotifierGestureFromOSJNI.h"
 #endif
