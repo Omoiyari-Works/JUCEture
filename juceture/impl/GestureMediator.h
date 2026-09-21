@@ -153,6 +153,11 @@ HandlerType* GestureMediator::getHandlerFromTopmostComponent(float rawX, float r
         return nullptr;
     }
 
+    if (!target->isEnabled())
+    {
+        return nullptr;
+    }
+
     if (auto* handler = dynamic_cast<HandlerType*>(target))
     {
         outLocal = target->getLocalPoint(&peerComp, topLocal);

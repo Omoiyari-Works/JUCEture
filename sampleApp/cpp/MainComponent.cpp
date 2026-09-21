@@ -18,6 +18,9 @@ const juce::Colour kDragCircleStrokeColour = juce::Colours::orange;
 const juce::Colour kDragCircleFillColour = juce::Colours::orange.withAlpha(kDragCircleFillAlpha);
 constexpr int kGestureBoxCount = 3;
 constexpr int kGestureBoxSpacingPx = 0;
+constexpr int kEnableToggleWidthPx = 130;
+constexpr int kEnableToggleHeightPx = 24;
+constexpr int kEnableToggleMarginPx = 4;
 
 struct NoHitLabel : public juce::Label
 {
@@ -53,6 +56,24 @@ MainComponent::MainComponent()
     addAndMakeVisible(*boxTop);
     addAndMakeVisible(*boxMiddle);
     addAndMakeVisible(*boxBottom);
+
+    // Each toggle enables/disables its zone's GestureTestBox so gestures on a
+    // disabled zone can be verified to be ignored.
+    auto setupEnableToggle = [](juce::ToggleButton& toggle, GestureTestBox& box)
+    {
+        toggle.setToggleState(true, juce::dontSendNotification);
+        toggle.onClick = [&toggle, &box]()
+        {
+            box.setEnabled(toggle.getToggleState());
+        };
+    };
+    setupEnableToggle(enableToggleTop, *boxTop);
+    setupEnableToggle(enableToggleMiddle, *boxMiddle);
+    setupEnableToggle(enableToggleBottom, *boxBottom);
+
+    addAndMakeVisible(enableToggleTop);
+    addAndMakeVisible(enableToggleMiddle);
+    addAndMakeVisible(enableToggleBottom);
 
     setSize(600, 400);
 
@@ -152,6 +173,7 @@ void MainComponent::resized()
     int heightRemainder = (kGestureBoxCount > 0) ? (usableHeight % kGestureBoxCount) : 0;
 
     auto assignBoxBounds = [&gestureArea, &heightRemainder, baseHeight](std::unique_ptr<GestureTestBox>& box,
+                                                                        juce::ToggleButton& enableToggle,
                                                                         int boxIndex)
     {
         if (box == nullptr)
@@ -167,13 +189,19 @@ void MainComponent::resized()
         auto bounds = gestureArea.removeFromTop(height);
         box->setBounds(bounds);
 
+        auto toggleBounds = bounds.removeFromTop(kEnableToggleHeightPx + kEnableToggleMarginPx * 2)
+                                 .removeFromRight(kEnableToggleWidthPx)
+                                 .reduced(kEnableToggleMarginPx);
+        enableToggle.setBounds(toggleBounds);
+        enableToggle.toFront(false);
+
         if (boxIndex < kGestureBoxCount - 1)
             gestureArea.removeFromTop(kGestureBoxSpacingPx);
     };
 
-    assignBoxBounds(boxTop, 0);
-    assignBoxBounds(boxMiddle, 1);
-    assignBoxBounds(boxBottom, 2);
+    assignBoxBounds(boxTop, enableToggleTop, 0);
+    assignBoxBounds(boxMiddle, enableToggleMiddle, 1);
+    assignBoxBounds(boxBottom, enableToggleBottom, 2);
 }
 
 void MainComponent::parentHierarchyChanged()

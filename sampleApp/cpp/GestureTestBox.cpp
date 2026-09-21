@@ -13,6 +13,7 @@ constexpr int kContentInsetPx = 4;
 constexpr int kTitleStatusGapPx = 4;
 constexpr float kBodyFontSizePt = 14.0f;
 constexpr int kTargetFrameRateHz = 30;
+constexpr float kDisabledBackgroundDarkenAmount = 0.6f;
 
 int getBodyLineHeightPx()
 {
@@ -192,7 +193,7 @@ void GestureTestBox::onPinchEnd(const PinchEndEvent& event)
 
 void GestureTestBox::paint(juce::Graphics& g)
 {
-    g.fillAll(background);
+    g.fillAll(isEnabled() ? background : background.darker(kDisabledBackgroundDarkenAmount));
     g.setColour(juce::Colours::white);
     g.setFont(juce::FontOptions(kBodyFontSizePt));
     auto all = getLocalBounds().reduced(kContentInsetPx);

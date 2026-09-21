@@ -69,6 +69,13 @@ class MainComponent : public juce::AnimatedAppComponent,
     std::unique_ptr<GestureTestBox> boxTop;
     std::unique_ptr<GestureTestBox> boxMiddle;
     std::unique_ptr<GestureTestBox> boxBottom;
+
+    // Toggles each gesture test zone's isEnabled() state, to verify that a
+    // disabled zone stops receiving tap/drag/pinch gestures.
+    juce::ToggleButton enableToggleTop{"Enable Top"};
+    juce::ToggleButton enableToggleMiddle{"Enable Middle"};
+    juce::ToggleButton enableToggleBottom{"Enable Bottom"};
+
     bool dragIndicatorActive = false;
     juce::Point<float> dragStartPoint{0.0f, 0.0f};
     juce::Point<float> dragCurrentPoint{0.0f, 0.0f};
