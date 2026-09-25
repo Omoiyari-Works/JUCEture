@@ -3,6 +3,7 @@
 #include "Pinch/PinchDetector.h"
 #include "LongTap/LongTapDetector.h"
 #include "GestureMediator.h"
+#include "GesturePeerWatcher.h"
 #include <juce_gui_basics/juce_gui_basics.h>
 #if JUCE_ANDROID
 #include <jni.h>
@@ -16,55 +17,19 @@ static std::unique_ptr<DragDetector> gDragDetector;
 static std::unique_ptr<PinchDetector> gPinchDetector;
 static std::unique_ptr<LongTapDetector> gLongTapDetector;
 
-// Viewへのattach状態管理
-static bool gViewAttached = false;
-static std::mutex gAttachMutex;
-
 // Detector初期化状態管理
 static bool gDetectorsInitialized = false;
 static std::mutex gDetectorInitMutex;
 
-// 初期化処理：Viewにgesture listenerをアタッチ
+// 初期化処理：現在のピア（メインウィンドウ）にgesture listenerをアタッチし、
+// 以降addToDesktop()される別ウィンドウにも追従してアタッチし続けるよう
+// GesturePeerWatcherの定期監視を開始する
 bool attachGestureListenerOnce()
 {
-    std::lock_guard<std::mutex> lock(gAttachMutex);
-    if (gViewAttached)
-    {
-        return true;
-    }
-
-    auto* peer = juce::ComponentPeer::getPeer(0);
-    if (peer == nullptr)
-    {
-        return false;
-    }
-
-    if (auto* env = juce::getEnv())
-    {
-        auto viewObj = static_cast<jobject>(peer->getNativeHandle());
-        if (viewObj == nullptr)
-        {
-            return false;
-        }
-
-        const jclass helperClass = env->FindClass("com/juceture/android/NotifierGestureFromAndroid");
-        if (helperClass == nullptr)
-        {
-            return false;
-        }
-
-        const jmethodID attachMethod = env->GetStaticMethodID(helperClass, "attach", "(Landroid/view/View;J)V");
-        if (attachMethod == nullptr)
-        {
-            return false;
-        }
-
-        // nativePtrは0で良い（実際には使われていない）
-        env->CallStaticVoidMethod(helperClass, attachMethod, viewObj, static_cast<jlong>(0));
-        gViewAttached = true;
-        return true;
-    }
-    return false;
+    auto& watcher = GesturePeerWatcher::getInstance();
+    const bool attached = watcher.reconcile();
+    watcher.startWatching();
+    return attached;
 }
 
 void initializeDetectors()

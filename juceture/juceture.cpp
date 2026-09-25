@@ -5,6 +5,7 @@
 #include "impl/CoordinateConverter.cpp"
 #include "impl/GestureEvent.cpp"
 #include "impl/GestureMediator.cpp"
+#include "impl/GesturePeerWatcher.cpp"
 #include "impl/JUCEtureAPI.cpp"
 #include "impl/NotifierGestureFromOSJNI.cpp"
 

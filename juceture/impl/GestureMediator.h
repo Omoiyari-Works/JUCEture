@@ -126,13 +126,19 @@ HandlerType* GestureMediator::getHandlerFromTopmostComponent(float rawX, float r
                                                              juce::Point<float>& outGlobal)
 {
 #if JUCE_ANDROID
-    auto numPeers = juce::ComponentPeer::getNumPeers();
-    if (numPeers <= 0)
+    // 複数ウィンドウ（addToDesktop()されたダイアログ等）が存在する場合、
+    // Desktopのz-order配列の末尾＝最前面のトップレベルComponentを対象にする。
+    // 単一ウィンドウ時はgetComponent(0)がgetPeer(0)と同一ピアを指すため、
+    // 既存のメイン画面での挙動は変化しない。
+    auto& desktop = juce::Desktop::getInstance();
+    const int numDesktopComponents = desktop.getNumComponents();
+    if (numDesktopComponents <= 0)
     {
         return nullptr;
     }
 
-    auto* peer = juce::ComponentPeer::getPeer(0);
+    auto* topComponent = desktop.getComponent(numDesktopComponents - 1);
+    auto* peer = topComponent != nullptr ? juce::ComponentPeer::getPeerFor(topComponent) : nullptr;
     if (peer == nullptr)
     {
         return nullptr;
