@@ -38,7 +38,8 @@ public final class NotifierGestureFromAndroid {
             float density, long nativePtr);
 
     // Pinch (scale) gesture
-    private static native void onPinchStart(float focusXInView, float focusYInView,
+    // Returns true if an IPinchHandler was found and notified of the pinch start.
+    private static native boolean onPinchStart(float focusXInView, float focusYInView,
             float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY, float density, long nativePtr);
 
     private static native void onPinchScale(float focusXInView, float focusYInView,
@@ -132,6 +133,10 @@ public final class NotifierGestureFromAndroid {
         // the rest of the touch sequence (ACTION_MOVE / ACTION_UP) is consumed.
         private boolean longTapHandledByNative = false;
         private boolean postPinch = false;
+        // True when an IPinchHandler in C++ accepted the current pinch. When false,
+        // the pinch touch events are not consumed so that JUCE's normal mouse
+        // processing still receives them. Reset on ACTION_DOWN.
+        private boolean pinchHandledByNative = false;
 
         OnTouchWrapper(Context context) {
             this.context = context;
@@ -183,8 +188,9 @@ public final class NotifierGestureFromAndroid {
                         public boolean onScroll(MotionEvent dragStartPoint, MotionEvent dragCurrentPoint,
                                 float distanceX, float distanceY) {
                             if (pinching || postPinch) {
-                                // Suppress drag notifications while in a pinch or immediately after a pinch ends
-                                return true;
+                                // Suppress drag notifications while in a pinch or immediately after a pinch ends.
+                                // Consume the event only if an IPinchHandler handled the pinch.
+                                return pinchHandledByNative;
                             }
                             final float density = context.getResources().getDisplayMetrics().density;
                             try {
@@ -277,6 +283,7 @@ public final class NotifierGestureFromAndroid {
                 lastSingleTapHandled = false; // Reset for new touch sequence
                 longTapHandledByNative = false;
                 postPinch = false;            // Reset post-pinch drag suppression for new touch sequence
+                pinchHandledByNative = false;
             }
 
             // --- Custom pinch tracking (replaces ScaleGestureDetector) ---
@@ -296,13 +303,13 @@ public final class NotifierGestureFromAndroid {
                             final float[] startFocus = calculateFocus(event);
                             lastRawFocusX = startFocus[0];
                             lastRawFocusY = startFocus[1];
-                            onPinchStart(lastRawFocusX, lastRawFocusY,
+                            pinchHandledByNative = onPinchStart(lastRawFocusX, lastRawFocusY,
                                     1.0f, 1.0f, 1.0f, density, nativePtr);
                         }
                         break;
 
                     case MotionEvent.ACTION_MOVE:
-                        if (pinching && pointerCount >= MIN_POINTER_COUNT_FOR_PINCH) {
+                        if (pinching && pinchHandledByNative && pointerCount >= MIN_POINTER_COUNT_FOR_PINCH) {
                             final float newSpan = calculateSpan(event);
                             final float newSpanX = calculateSpanX(event);
                             final float newSpanY = calculateSpanY(event);
@@ -344,8 +351,10 @@ public final class NotifierGestureFromAndroid {
                             final int remainingIndex = (liftingIndex == 0) ? 1 : 0;
                             final float endFocusX = event.getRawX(remainingIndex);
                             final float endFocusY = event.getRawY(remainingIndex);
-                            onPinchEnd(endFocusX, endFocusY,
-                                    1.0f, 1.0f, 1.0f, density, nativePtr);
+                            if (pinchHandledByNative) {
+                                onPinchEnd(endFocusX, endFocusY,
+                                        1.0f, 1.0f, 1.0f, density, nativePtr);
+                            }
                             pinching = false;
                             postPinch = true; // Suppress drag until next ACTION_DOWN
                             lastPinchSpan = 0f;
@@ -357,8 +366,10 @@ public final class NotifierGestureFromAndroid {
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
                         if (pinching) {
-                            onPinchEnd(lastRawFocusX, lastRawFocusY,
-                                    1.0f, 1.0f, 1.0f, density, nativePtr);
+                            if (pinchHandledByNative) {
+                                onPinchEnd(lastRawFocusX, lastRawFocusY,
+                                        1.0f, 1.0f, 1.0f, density, nativePtr);
+                            }
                             pinching = false;
                             lastPinchSpan = 0f;
                             lastPinchSpanX = 0f;
@@ -382,7 +393,7 @@ public final class NotifierGestureFromAndroid {
             boolean handled = false;
             if (action == MotionEvent.ACTION_UP) {
                 handled = lastSingleTapHandled || longTapHandledByNative;
-            } else if (pinching) {
+            } else if (pinching && pinchHandledByNative) {
                 handled = true;
             } else if (action != MotionEvent.ACTION_DOWN) {
                 handled = handledGesture || longTapHandledByNative;

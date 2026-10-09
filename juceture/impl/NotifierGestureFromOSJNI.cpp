@@ -110,7 +110,8 @@ extern "C"
         }
     }
 
-    JNIEXPORT void JNICALL
+    // Returns JNI_TRUE only if an IPinchHandler was found for this pinch.
+    JNIEXPORT jboolean JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onPinchStart(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat focusXInView,
         jfloat focusYInView, jfloat scaleFactorStep,
@@ -122,8 +123,11 @@ extern "C"
 
         if (gPinchDetector != nullptr)
         {
-            gPinchDetector->onPinchStartRaw(focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
+            const bool handled = gPinchDetector->onPinchStartRaw(
+                focusXInView, focusYInView, scaleFactorStep, scaleFactorStepX, scaleFactorStepY);
+            return handled ? JNI_TRUE : JNI_FALSE;
         }
+        return JNI_FALSE;
     }
 
     JNIEXPORT void JNICALL

@@ -11,7 +11,10 @@ class PinchDetector
     explicit PinchDetector(IPinchMediator& mediator);
     ~PinchDetector();
 
-    void onPinchStartRaw(float focusRawX, float focusRawY, float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY);
+    // Returns true if an IPinchHandler was found and notified of the pinch start.
+    // Returns false if there is no handler under the focus point; the caller
+    // should then leave the touch events to the normal JUCE processing.
+    bool onPinchStartRaw(float focusRawX, float focusRawY, float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY);
     void onPinchScaleRaw(float focusRawX, float focusRawY, float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY);
     void onPinchEndRaw(float focusRawX, float focusRawY, float scaleFactorStep, float scaleFactorStepX, float scaleFactorStepY);
 

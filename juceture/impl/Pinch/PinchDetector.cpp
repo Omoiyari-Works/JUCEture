@@ -24,7 +24,7 @@ PinchDetector::~PinchDetector()
 {
 }
 
-void PinchDetector::onPinchStartRaw(float focusRawX, float focusRawY,
+bool PinchDetector::onPinchStartRaw(float focusRawX, float focusRawY,
                                     float scaleFactorStep,
                                     float scaleFactorStepX,
                                     float scaleFactorStepY)
@@ -45,8 +45,14 @@ void PinchDetector::onPinchStartRaw(float focusRawX, float focusRawY,
         {
             PinchStartEvent event(focusLocalPt, focusGlobalPt, focusRawX, focusRawY);
             target->onPinchStart(event);
+            return true;
         }
     }
+    return false;
+#else
+    juce::ignoreUnused(focusRawX, focusRawY, scaleFactorStep, scaleFactorStepX,
+                       scaleFactorStepY);
+    return false;
 #endif
 }
 
