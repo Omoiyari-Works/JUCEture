@@ -62,7 +62,8 @@ extern "C"
         return JNI_FALSE;
     }
 
-    JNIEXPORT void JNICALL
+    // Returns JNI_TRUE only if an IDragHandler was found for this drag.
+    JNIEXPORT jboolean JNICALL
     Java_com_juceture_android_NotifierGestureFromAndroid_onDragStart(
         JNIEnv* /*env*/, jclass /*clazz*/, jfloat startRawX, jfloat startRawY,
         jfloat currentRawX, jfloat currentRawY, jfloat deltaX, jfloat deltaY,
@@ -72,9 +73,11 @@ extern "C"
 
         if (gDragDetector != nullptr)
         {
-            gDragDetector->onDragStartRaw(startRawX, startRawY, currentRawX,
-                                          currentRawY, deltaX, deltaY);
+            const bool handled = gDragDetector->onDragStartRaw(
+                startRawX, startRawY, currentRawX, currentRawY, deltaX, deltaY);
+            return handled ? JNI_TRUE : JNI_FALSE;
         }
+        return JNI_FALSE;
     }
 
     JNIEXPORT void JNICALL

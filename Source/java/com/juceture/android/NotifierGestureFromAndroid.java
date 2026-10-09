@@ -21,7 +21,8 @@ public final class NotifierGestureFromAndroid {
     // Returns true if ILongTapHandler was found and handled, false otherwise
     private static native boolean onLongTap(float xPx, float yPx, float density);
 
-    private static native void onDragStart(float startRawX, float startRawY,
+    // Returns true if an IDragHandler was found and notified of the drag start.
+    private static native boolean onDragStart(float startRawX, float startRawY,
             float currentRawX, float currentRawY,
             float deltaX, float deltaY,
             float density, long nativePtr);
@@ -51,23 +52,26 @@ public final class NotifierGestureFromAndroid {
     private static final int PHASE_END = 2;
     private static final int MIN_POINTER_COUNT_FOR_PINCH = 2;
 
-    private static void sendDragToNative(int phase,
+    // Returns true if the drag is handled by an IDragHandler in C++.
+    // For PHASE_START it reflects whether a handler was found; for the other
+    // phases the drag is already known to be handled, so it always returns true.
+    private static boolean sendDragToNative(int phase,
             float startRawX, float startRawY,
             float currentRawX, float currentRawY,
             float deltaX, float deltaY,
             float density, long nativePtr) {
         switch (phase) {
             case PHASE_START:
-                onDragStart(startRawX, startRawY, currentRawX, currentRawY, deltaX, deltaY, density, nativePtr);
-                break;
+                return onDragStart(startRawX, startRawY, currentRawX, currentRawY, deltaX, deltaY, density, nativePtr);
             case PHASE_MOVE:
                 onDragMove(startRawX, startRawY, currentRawX, currentRawY, deltaX, deltaY, density, nativePtr);
-                break;
+                return true;
             case PHASE_END:
                 onDragEnd(startRawX, startRawY, currentRawX, currentRawY, deltaX, deltaY, density, nativePtr);
-                break;
+                return true;
             default:
                 Log.w("NotifierGestureFromAndroid", "Unknown drag phase: " + phase);
+                return false;
         }
     }
 
@@ -109,6 +113,10 @@ public final class NotifierGestureFromAndroid {
         private final Context context;
         private long nativePtr = 0L;
         private boolean dragging = false;
+        // True when an IDragHandler in C++ accepted the current drag. When false,
+        // the drag events are not consumed so that JUCE's normal mouse processing
+        // (e.g. Viewport drag-to-scroll) still receives them.
+        private boolean dragHandledByNative = false;
         private boolean pinching = false;
         private float dragStartRawX = 0f;
         private float dragStartRawY = 0f;
@@ -184,11 +192,15 @@ public final class NotifierGestureFromAndroid {
                                     lastRawX = dragStartRawX;
                                     lastRawY = dragStartRawY;
                                     // DragStart: current = start, delta = (0,0)
-                                    sendDragToNative(PHASE_START,
+                                    dragHandledByNative = sendDragToNative(PHASE_START,
                                             dragStartRawX, dragStartRawY,
                                             dragStartRawX, dragStartRawY,
                                             0f, 0f,
                                             density, nativePtr);
+                                }
+                                if (!dragHandledByNative) {
+                                    // No IDragHandler under the drag start: do not consume the event.
+                                    return false;
                                 }
                                 final float currentRawX = dragCurrentPoint.getRawX();
                                 final float currentRawY = dragCurrentPoint.getRawY();
@@ -204,7 +216,7 @@ public final class NotifierGestureFromAndroid {
                             } catch (Throwable t) {
                                 Log.e("NotifierGestureFromAndroid", "Throwable in onScroll", t);
                             }
-                            return true;
+                            return dragHandledByNative;
                         }
                     });
         }
@@ -379,17 +391,20 @@ public final class NotifierGestureFromAndroid {
                     final float endRawY = event.getRawY();
                     final float stepDeltaX = endRawX - lastRawX;
                     final float stepDeltaY = endRawY - lastRawY;
-                    sendDragToNative(PHASE_END,
-                            dragStartRawX, dragStartRawY,
-                            endRawX, endRawY,
-                            stepDeltaX, stepDeltaY,
-                            density, nativePtr);
+                    if (dragHandledByNative) {
+                        sendDragToNative(PHASE_END,
+                                dragStartRawX, dragStartRawY,
+                                endRawX, endRawY,
+                                stepDeltaX, stepDeltaY,
+                                density, nativePtr);
+                    }
                 } catch (UnsatisfiedLinkError err) {
                     Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onDragEnd", err);
                 } catch (Throwable t) {
                     Log.e("NotifierGestureFromAndroid", "Throwable in onDragEnd", t);
                 } finally {
                     dragging = false;
+                    dragHandledByNative = false;
                     dragStartRawX = dragStartRawY = 0f;
                     lastRawX = lastRawY = 0f;
                 }
@@ -404,17 +419,20 @@ public final class NotifierGestureFromAndroid {
             }
             try {
                 final float density = context.getResources().getDisplayMetrics().density;
-                sendDragToNative(PHASE_END,
-                        dragStartRawX, dragStartRawY,
-                        lastRawX, lastRawY,
-                        0f, 0f,
-                        density, nativePtr);
+                if (dragHandledByNative) {
+                    sendDragToNative(PHASE_END,
+                            dragStartRawX, dragStartRawY,
+                            lastRawX, lastRawY,
+                            0f, 0f,
+                            density, nativePtr);
+                }
             } catch (UnsatisfiedLinkError err) {
                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in terminateDragDueToPinch", err);
             } catch (Throwable t) {
                 Log.e("NotifierGestureFromAndroid", "Throwable in terminateDragDueToPinch", t);
             } finally {
                 dragging = false;
+                dragHandledByNative = false;
                 dragStartRawX = dragStartRawY = 0f;
                 lastRawX = lastRawY = 0f;
             }

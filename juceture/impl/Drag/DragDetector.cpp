@@ -18,7 +18,7 @@ DragDetector::~DragDetector()
 {
 }
 
-void DragDetector::onDragStartRaw(float startRawX, float startRawY,
+bool DragDetector::onDragStartRaw(float startRawX, float startRawY,
                                   float currentRawX, float currentRawY,
                                   float stepDeltaRawX, float stepDeltaRawY)
 {
@@ -39,8 +39,14 @@ void DragDetector::onDragStartRaw(float startRawX, float startRawY,
             DragStartEvent event(startLocalPt, currLocalPt, deltaPt, startGlobalPt, currGlobalPt,
                                 startRawX, startRawY, currentRawX, currentRawY);
             target->onDragStart(event);
+            return true;
         }
     }
+    return false;
+#else
+    juce::ignoreUnused(startRawX, startRawY, currentRawX, currentRawY,
+                       stepDeltaRawX, stepDeltaRawY);
+    return false;
 #endif
 }
 
