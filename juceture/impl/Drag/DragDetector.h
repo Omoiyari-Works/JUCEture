@@ -11,7 +11,10 @@ class DragDetector
     explicit DragDetector(IDragMediator& mediator);
     ~DragDetector();
 
-    void onDragStartRaw(float startRawX, float startRawY, float currentRawX,
+    // Returns true if an IDragHandler was found and notified of the drag start.
+    // Returns false if there is no handler under the drag start point; the
+    // caller should then leave the touch events to the normal JUCE processing.
+    bool onDragStartRaw(float startRawX, float startRawY, float currentRawX,
                         float currentRawY, float stepDeltaRawX,
                         float stepDeltaRawY);
     void onDragMoveRaw(float startRawX, float startRawY, float currentRawX,
