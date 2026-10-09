@@ -128,6 +128,9 @@ public final class NotifierGestureFromAndroid {
         private float lastPinchSpanX = 0f;
         private float lastPinchSpanY = 0f;
         private boolean lastSingleTapHandled = false;
+        // True when an ILongTapHandler in C++ handled the current long press. While true,
+        // the rest of the touch sequence (ACTION_MOVE / ACTION_UP) is consumed.
+        private boolean longTapHandledByNative = false;
         private boolean postPinch = false;
 
         OnTouchWrapper(Context context) {
@@ -168,7 +171,7 @@ public final class NotifierGestureFromAndroid {
                             try {
                                 // Pass screen coordinates (raw px) and density (move to top-level local in C++)
                                 final float density = context.getResources().getDisplayMetrics().density;
-                                onLongTap(e.getRawX(), e.getRawY(), density);
+                                longTapHandledByNative = onLongTap(e.getRawX(), e.getRawY(), density);
                             } catch (UnsatisfiedLinkError err) {
                                 Log.e("NotifierGestureFromAndroid", "UnsatisfiedLinkError in onLongPress", err);
                             } catch (Throwable t) {
@@ -272,6 +275,7 @@ public final class NotifierGestureFromAndroid {
 
             if (action == MotionEvent.ACTION_DOWN) {
                 lastSingleTapHandled = false; // Reset for new touch sequence
+                longTapHandledByNative = false;
                 postPinch = false;            // Reset post-pinch drag suppression for new touch sequence
             }
 
@@ -377,11 +381,11 @@ public final class NotifierGestureFromAndroid {
             // Determine if we should consume the event
             boolean handled = false;
             if (action == MotionEvent.ACTION_UP) {
-                handled = lastSingleTapHandled;
+                handled = lastSingleTapHandled || longTapHandledByNative;
             } else if (pinching) {
                 handled = true;
             } else if (action != MotionEvent.ACTION_DOWN) {
-                handled = handledGesture;
+                handled = handledGesture || longTapHandledByNative;
             }
 
             // Drag end on ACTION_UP / ACTION_CANCEL
